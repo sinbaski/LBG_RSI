@@ -162,46 +162,74 @@ and A.D = F.D
 
 -- alter table UK_Tmax change val V float;
 
-create table UK_RSI_sector_weights (
-       non_specialized float,
-       specialist float,
-       drinks_tobacco float,
-       textiles float,
-       clothing float,
-       footwear float,
-       furniture float,
-       electrical float,
-       hardware float,
-       music float,
-       pharmaceutical_etc float,
-       books_etc float,
-       floor_cover float,
-       computer_telcomm	float,
-       other_specialized float,
-       mail_order float,
-       other_non_store float,
-       automotive_fuel float
-);
+-- create table UK_RSI_sector_weights (
+--        non_specialized float,
+--        specialist float,
+--        drinks_tobacco float,
+--        textiles float,
+--        clothing float,
+--        footwear float,
+--        furniture float,
+--        electrical float,
+--        hardware float,
+--        music float,
+--        pharmaceutical_etc float,
+--        books_etc float,
+--        floor_cover float,
+--        computer_telcomm	float,
+--        other_specialized float,
+--        mail_order float,
+--        other_non_store float,
+--        automotive_fuel float
+-- );
 
-insert into uk_rsi_sector_weights values (
-       142507, 8346, 3593, 800, 40106, 4823, 13671, 6287, 11713,
-       1002, 5603, 3723, 1520, 5675, 34098, 30738, 2464, 36849
-);
+-- insert into uk_rsi_sector_weights values (
+--        142507, 8346, 3593, 800, 40106, 4823, 13671, 6287, 11713,
+--        1002, 5603, 3723, 1520, 5675, 34098, 30738, 2464, 36849
+-- );
+drop table uk_rsi_sector_weights;
 
-create table UK_RSI_sectors (
-       sector varchar(64) primary key,
-       category varchar(32),
+create table uk_rsi_sector_weights (
+       category varchar(32) primary key,
+       grp varchar(32),
        weight float
 );
 
+insert into uk_rsi_sector_weights values
+('non_specialized_food', 'food',142507),
+('specialist_food', 'food',8346),
+('drinks_tobacco', 'food',3593),
+('non_specialized_non_food', 'non_specialized_non_food',34180),
+('textiles', 'textiles_etc', 800),
+('clothing', 'textiles_etc', 40106),
+('footwear', 'textiles_etc', 4823),
+('furniture', 'household_goods', 13671),
+('electrical', 'household_goods', 6287),
+('hardware', 'household_goods', 11713),
+('music', 'household_goods', 1002),
+('pharmaceutical_etc', 'pharmaceutical_etc', 5603),
+('books_etc', 'books_etc', 3723),
+('floor_cover', 'floor_cover', 1520),
+('computer_telcomm', 'computer_telcomm', 5675),
+('other_specialized', 'other_specialized', 34098),
+('mail_order', 'non_store', 30738),
+('other_non_store', 'non_store', 2464),
+('fuel', 'fuel', 36849);
+
 create table UK_RSI_food (
        mon date primary key,
-       non_specialized float,
+       non_specialized_food float,
        specialist float,
        drinks_tobacco float,
        non_specialized_f float,
        specialist_f float,
        drinks_tobacco_f float
+);
+
+create table UK_RSI_non_specialized_non_food (
+       mon date primary key,
+       val float,
+       val_f float
 );
 
 create table UK_RSI_textiles_etc (
@@ -270,7 +298,7 @@ create table UK_RSI_automotive_fuel (
        val_f float
 );
 
-load data local infile 'B.txt' into table UK_RSI_food columns terminated by '\t' (mon, non_specialized, specialist, drinks_tobacco);
+load data local infile 'B.txt' into table UK_RSI_food columns terminated by '\t' (non_specialized_s, specialist_s, drinks_tobacco_s);
 
 select
 non_specialized_f,
@@ -330,3 +358,109 @@ create table my_lm_tm_models (
        sma1 float
 );
 
+drop table uk_rsi_adjusted;
+create table uk_rsi_adjusted (
+       mon date primary key,
+       non_specialized_food float,
+       specialist_food float,
+       drink_tobacco float,
+       non_specialized_non_food	float,
+       textiles float,
+       clothing float,
+       footwear_leather float,
+       furnature_lighting float,
+       electrical float,
+       hardware float,
+       music float,
+       chemists float,
+       medical float,
+       cosmetic_toilet float,
+       computer_telcomm float,
+       floor_cover float,
+       books_periodicals float,
+       sports_games float,
+       plants_pet_food float,
+       watches_jewellery float,
+       other_specialized float,
+       second_hand float,
+       mail_order float,
+       other_non_store float,
+       fuel float
+);
+
+alter table uk_rsi_adjusted
+add non_specialized_food_f float,
+add specialist_food_f float,
+add drink_tobacco_f float,
+add non_specialized_non_food_f float,
+add textiles_f float,
+add clothing_f float,
+add footwear_leather_f float,
+add furnature_lighting_f float,
+add electrical_f float,
+add hardware_f float,
+add music_f float,
+add chemists_f float,
+add medical_f float,
+add cosmetic_toilet_f float,
+add computer_telcomm_f float,
+add floor_cover_f float,
+add books_periodicals_f float,
+add sports_games_f float,
+add plants_pet_food_f float,
+add watches_jewellery_f float,
+add other_specialized_f float,
+add second_hand_f float,
+add mail_order_f float,
+add other_non_store_f float,
+add fuel_f float
+;
+
+create table uk_rsi_adjusted_weights (
+       category varchar(64) primary key,
+       subclass varchar(64),
+       weight float
+);
+
+insert into uk_rsi_adjusted_weights values
+('non_specialized_food', 'food', 38.5),
+('specialist_food', 'food', 2.2),
+('drink_tobacco', 'food', 0.8),
+('non_specialized_non_food', 'non-specialized non-food', 8.1),
+('textiles', 'textiles etc', 0.19),
+('clothing', 'textiles etc', 10.69),
+('footwear_leather', 'textiles etc', 1.29),
+('furnature_lighting', 'household', 3.11),
+('electrical', 'household', 2.08),
+('hardware', 'household', 2.92),
+('music', 'household', 0.43),
+('chemists', 'other specialized non-food', 0.31),
+('medical', 'other specialized non-food', 0.14),
+('cosmetic_toilet', 'other specialized non-food', 0.84),
+('computer_telcomm', 'other specialized non-food', 1.23),
+('floor_cover', 'other specialized non-food', 0.59),
+('books_periodicals', 'other specialized non-food', 1.22),
+('sports_games', 'other specialized non-food', 2.18),
+('plants_pet_food', 'other specialized non-food', 1.15),
+('watches_jewellery', 'other specialized non-food', 1.42),
+('other_specialized', 'other specialized non-food', 2.81),
+('second_hand', 'other specialized non-food', 0.64),
+('mail_order', 'non-store', 4.9),
+('other_non_store', 'non-store', 0.8),
+('fuel', 'fuel', 11.5);
+
+load data local infile 'B.txt' into table uk_rsi_adjusted
+columns terminated by '\t';
+
+load data local infile 'C.txt' into table UK_RSI_non_specialized_non_food
+columns terminated by '\t' (mon, val);
+
+select * from UK_RSI_overall_unadjusted order by mon desc limit 20;
+
+create table uk_rsi_adjusted_overall (
+       mon char(10) primary key,
+       adjusted float
+);
+
+load data local infile 'C.txt' into table uk_rsi_adjusted_overall
+columns terminated by '\t';
