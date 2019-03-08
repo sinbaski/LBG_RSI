@@ -464,3 +464,64 @@ create table uk_rsi_adjusted_overall (
 
 load data local infile 'C.txt' into table uk_rsi_adjusted_overall
 columns terminated by '\t';
+
+delimiter #
+create function may_bank_hld (y char(4))
+returns date
+begin
+  set @x = concat(y, '-05-31');
+  return date_add(@x, interval -weekday(@x) day);
+end#
+delimiter ;
+
+delimiter #
+create function august_bank_hld (y char(4))
+returns date
+begin
+  set @x = concat(y, '-08-31');
+  return date_add(@x, interval -weekday(@x) day);
+end#
+delimiter ;
+
+delimiter #
+create function easter_sunday(y char(4))
+returns date
+begin
+set @a = y mod 19;
+set @b = y div 100;
+set @c = y mod 100;
+set @d = @b div 4;
+set @e = @b mod 4;
+set @f = (@b + 8) div 25;
+set @g = (@b - @f + 1) div 3;
+set @h = (19*@a + @b - @d - @g + 15) mod 30;
+set @i = @c div 4;
+set @k = @c mod 4;
+set @l = (32 + 2*@e + 2*@i - @h - @k) mod 7;
+set @m = (@a + 11*@h + 22*@l) div 451;
+set @mth = (@h + @l - 7*@m + 114) div 31;
+set @dag = ((@h + @l - 7*@m + 114) mod 31) + 1;
+return concat(y, '-', @mth, '-', @dag);
+end#
+delimiter ;
+
+
+
+create view bank_holiday_effects as
+select T1.mon, T1.d1, date_add(T2.d1, interval -1 day) as d2,
+may_bank_hld(year(T1.mon)) as d3,
+august_bank_hld(year(T1.mon)) as d4,
+case
+when month(T1.mon) = 5 && may_bank_hld(year(T1.mon)) >= T1.d1 && may_bank_hld(year(T1.mon)) < T2.d1
+then 1
+when month(T1.mon) = 6 && may_bank_hld(year(T1.mon)) < T1.d1
+then -0.8
+when month(T1.mon) = 8 && august_bank_hld(year(T1.mon)) >= T1.d1 && august_bank_hld(year(T1.mon)) < T2.d1
+then 1
+when month(T1.mon) = 9 && august_bank_hld(year(T1.mon)) < T1.d1
+then -0.8
+else 0
+end as bh
+from uk_rsi_standard_reporting_period as T1
+join uk_rsi_standard_reporting_period as T2
+on T2.mon = date_add(T1.mon, interval 1 month);

@@ -7,6 +7,7 @@ database = dbConnect(MySQL(), user='sinbaski', password='q1w2e3r4',
 stmt <- paste(
     "select mon from uk_rsi_food",
     "where non_specialized_food_f is not null",
+    "and mon <= '2018-11-01'",
     "order by mon desc"
 );
 rs <- dbSendQuery(database, stmt);
@@ -87,23 +88,24 @@ rs <- dbSendQuery(
     database,
     paste(
         "select * from uk_rsi_overall_unadjusted",
-        ## "where mon < '2018-11-01'",
+        "where mon <= '2018-11-01'",
         sprintf("order by mon desc limit %d", length(overall))
     )
 );
 data <- fetch(rs);
 dbClearResult(rs);
+dbDisconnect(database);
 
 series <- cbind(data$overall, overall);
 series <- apply(series, MARGIN=2, FUN=rev);
 
 pdf("RetailSalesIndex.pdf", width=12, height=6);
-plot(1:length(overall), series[, 1],
+plot(1:dim(series)[1], series[, 1],
      ylim=c(min(series), max(series)),
      main="UK retail sales index - non-seasonally adjusted: forecast accuracy",
      type="b", col="#FF0000", xaxt='n', pch=16,
      xlab="", ylab="");
-lines(1:length(overall), series[, 2], type="b", col="#0000FF", pch=16);
+lines(1:dim(series)[1], series[, 2], type="b", col="#0000FF", pch=16);
 labels <- seq(from=1, length(overall), by=3);
 axis(side=1, at=labels, labels=substr(rev(dates)[labels], start=1, stop=7),
      las=2);

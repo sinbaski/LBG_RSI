@@ -34,7 +34,8 @@ predict.retails <- function(category, columns, which.mon)
     if (length(columns) > 1) {
         log.sales <- log(D[, 7:dim(D)[2]]);
         E.sales <- eigen(cov(log.sales));
-        K <- min(which(cumsum(E.sales$values)/sum(E.sales$values) > 0.98));
+        ## K <- min(which(cumsum(E.sales$values)/sum(E.sales$values) > 0.98));
+        K <- dim(log.sales)[2];
         sales.factor <- log.sales %*% E.sales$vectors[, 1:K];
     } else {
         K <- 1;
@@ -46,52 +47,59 @@ predict.retails <- function(category, columns, which.mon)
     arma.coef <- matrix(NA, nrow=K, ncol=4);
     predictions <- matrix(NA, nrow=K, ncol=2);
 
-    A <- apply(abs(log.weather), MARGIN=2, FUN=mean);
-    B <- apply(abs(sales.factor), MARGIN=2, FUN=mean);
+    ## A <- apply(abs(log.weather), MARGIN=2, FUN=mean);
+    ## B <- apply(abs(sales.factor), MARGIN=2, FUN=mean);
     algorithms <- c(auglag, bobyqa, cobyla, lbfgs, mlsl, mma, sbplx);
     for (i in 1:K) {
         response <- sales.factor[, i];
         rho <- cor(x=log.weather, y=sales.factor[, i]);
-        if (sum(abs(rho) > 0.05) > 0) {
-            explanatory <- as.matrix(log.weather[, abs(rho) > 0.05]);
+        ## selected <- abs(rho) > 0.05;
+        selected <- rep(FALSE, length(log.weather));
+        if (sum(selected) > 0) {
+            explanatory <- as.matrix(log.weather[, selected]);
             mdl <- lm(response~explanatory - 1);
             R <- residuals(mdl);
-            regrs.coef[abs(rho) > 0.05, i] <- coef(mdl);
+            regrs.coef[selected, i] <- coef(mdl);
+
+            ## for (algo in algorithms) {
+            ##     fit <- algo(
+            ##     ## fit <- auglag(
+            ##         x0=rep(1, dim(explanatory)[2]),
+            ##         fn=function(arg) {
+            ##             temp <- sum(
+            ##             (sales.factor[, i] - explanatory %*% arg)^2
+            ##             );
+            ##             temp <- temp * (1 + sum(abs(arg)));
+            ##             return(temp);
+            ##         },
+            ##         lower=-rep(5, dim(explanatory)[2]),
+            ##         upper=rep(5, dim(explanatory)[2]),
+            ##         control=list(xtol_rel=1.0e-4, maxeval=2000)
+            ##         ## xtol_rel=1.0e-4,
+            ##         ## maxeval=2000
+            ##     );
+            ##     if (fit$convergence > 0 && fit$convergence < 5) {
+            ##         break;
+            ##     }
+            ## }
+            ## if (fit$convergence < 0) {
+            ##     stop(sprintf(
+            ##         "Algorithms failed for factor %d: %s", i, fit$message));
+            ## } else if (fit$convergence == 5) {
+            ##     stop(sprintf(
+            ##         "Algorithms failed to converge for factor %d: %s",
+            ##         i, fit$message));
+            ## }
+            ## regrs.coef[selected, i] <- fit$par;
+            ## R <- sales.factor[, i];
+            ## R <- R - explanatory %*% regrs.coef[selected, i];
         } else {
             R <- response;
             regrs.coef[, i] <- 0;
         }
-        ## for (algo in algorithms) {
-        ##     fit <- algo(
-        ##         x0=rep(1, M),
-        ##         fn=function(arg) {
-        ##             temp <- sum(
-        ##             (sales.factor[, i] - log.weather[, 1:M] %*% arg)^2
-        ##             );
-        ##             temp <- temp * (1 + sum(abs(arg)));
-        ##             return(temp);
-        ##         },
-        ##         lower=-1*rep(1, M),
-        ##         upper=1*rep(1, M),
-        ##         control=list(xtol_rel=1.0e-4, maxeval=2000)
-        ##         ## xtol_rel=1.0e-4,
-        ##         ## maxeval=2000
-        ##     );
-        ##     if (fit$convergence > 0 && fit$convergence < 5) {
-        ##         break;
-        ##     }
-        ## }
-        ## if (fit$convergence < 0) {
-        ##     stop(sprintf(
-        ##         "Algorithms failed for factor %d: %s", i, fit$message));
-        ## } else if (fit$convergence == 5) {
-        ##     stop(sprintf(
-        ##         "Algorithms failed to converge for factor %d: %s",
-        ##         i, fit$message));
-        ## }
-        ## P <- fit$par;
-        ## regrs.coef[, i] <- P * (abs(P) * A / B[i] > 0.05);
-        ## R <- sales.factor[, i] - log.weather %*% regrs.coef[, i];
+        ## R <- response;
+        ## regrs.coef[, i] <- 0;
+
 
         ## Not using weather as explanatory variables
         ## regrs.coef[, i] <- rep(0, M);
@@ -165,19 +173,20 @@ predict.retails <- function(category, columns, which.mon)
 
     if (dim(log.sales)[2] > K) {
         F <- log.sales %*% E.sales$vectors[, (K+1):dim(log.sales)[2]];
-        ## sales.pred <- c(
-        ##     factor.pred,
-        ##     apply(F, MARGIN=2, FUN=mean)
-        ## ) %*% t(E.sales$vectors);
         sales.pred <- c(
-            predictions[, 1],
+            factor.pred,
             apply(F, MARGIN=2, FUN=mean)
         ) %*% t(E.sales$vectors);
+        ## sales.pred <- c(
+        ##     predictions[, 1],
+        ##     apply(F, MARGIN=2, FUN=mean)
+        ## ) %*% t(E.sales$vectors);
     } else if (K > 1) { ## dim(log.sales)[2] == K
         sales.pred <- factor.pred %*% t(E.sales$vectors);
     } else { ## dim(log.sales)[2] == K == 1
         sales.pred <- factor.pred;
     }
+
 
     indices <- exp(sales.pred);
 
@@ -234,7 +243,8 @@ conn = dbConnect(MySQL(), user='sinbaski', password='q1w2e3r4',
 rs <- dbSendQuery(
     conn,
     paste(
-        "select mon from UK_RSI_fuel",
+        "select A.mon from UK_RSI_fuel as A join UK_weather as B",
+        "on A.mon = b.mon",
         "where fuel_f is not NULL",
 ##        "and mon < '2018-02-01'",
         "order by mon desc"
@@ -243,7 +253,7 @@ rs <- dbSendQuery(
 dates <- fetch(rs)$mon;
 dbClearResult(rs);
 
-dates <- "2018-11-01";
+## dates <- "2018-11-01";
 
 for (i in 1:length(dates)) {
     for (j in 1:length(categories)) {
