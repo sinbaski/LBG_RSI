@@ -172,10 +172,15 @@ rs <- dbSendQuery(
     database,
     paste(
         "select",
-        "T1.mon, T1.non_specialized_food as A, T2.non_specialized_food as B",
-        "from uk_rsi_food as T1 join uk_rsi_adjusted as T2",
+        "T1.mon, T1.overall as A, T2.adjusted as B",
+        "from uk_rsi_overall_unadjusted as T1 join",
+        "uk_rsi_adjusted_overall as T2",
+        ## "T1.mon, T1.non_specialized_food as A, T2.non_specialized_food as B",
+        ## "from uk_rsi_food as T1 join",
+        ## "uk_rsi_adjusted as T2",
         "on T1.mon = T2.mon",
-        "where T1.non_specialized_food is not NULL",
+        ## "where T1.non_specialized_food is not NULL",
+        "where T1.overall is not NULL",
         "order by T1.mon desc",
         "limit 120"
     )
@@ -197,6 +202,8 @@ explanatory <- cbind(phase.shift, bh, easter);
 
 mdl <- lm(X~explanatory);
 
+R <- residuals(mdl);
+
 food <- ts(
     data=residuals(mdl),
     start=c(as.numeric(substr(rsi.food$mon[N], start=1, stop=4)),
@@ -208,32 +215,40 @@ sma <- c("s3x1", "s3x3", "s3x5", "s3x9", "s3x15", "stable", "x11default");
 trendma <- c(9, 13, 23);
 
 scores <- matrix(NA, nrow=length(sma), ncol=length(trendma));
-
+reported <- rev(rsi.food$B);
 for (a in 1:length(sma)) {
     for (b in 1:length(trendma)) {
         out <- seas(
             food,
-            ## transform.function="log",
+            transform.function="none",
             x11.mode="add",
-            ## regression.aictest="(td)",
+            regression.aictest="(td)",
             x11.seasonalma=sma[a],
             x11.trendma=trendma[b]
         );
-        scores[a, b] <- sd(out$data[, "final"] - log(rev(rsi.food$B)));
-        ## scores[a, b] <- out$data[N, "final"] - rev(rsi.food$B)[N];
+        x <- coef(mdl)[1] + explanatory %*% coef(mdl)[-1] + out$data[, "final"];
+        ## x <- explanatory %*% coef(mdl) + out$data[, "final"];
+        adjusted <- exp(x);
+        s <- tail(x, n=-1) - head(log(reported), n=-1);
+        s <- s - diff(log(reported));
+        scores[a, b] <- mean(abs(s));
     }
 }
 
 out <- seas(
     food,
-    transform.function="log",
-    x11.mode="logadd",
-    regression.aictest="(td easter)",
-    x11.seasonalma="s3x1",
-    x11.trendma=9
+    transform.function="none",
+    x11.mode="add",
+    regression.aictest="(td)",
+    x11.seasonalma=sma[2],
+    x11.trendma=trendma[3]
 );
 
-Y <- cbind(out$data[, "final"], rev(rsi.food$B));
-Z <- apply(log(Y), MARGIN=2, FUN=diff);
-tail(Y);
+x <- coef(mdl)[1] + explanatory %*% coef(mdl)[-1] + out$data[, "final"];
+## x <- explanatory %*% coef(mdl) + out$data[, "final"];
+adjusted <- exp(x);
+Y <- cbind(adjusted, rev(rsi.food$B));
+Z <- tail(x, n=-1) - head(log(reported), n=-1);
+Z <- cbind(Z, diff(log(reported)));
 tail(Z);
+
