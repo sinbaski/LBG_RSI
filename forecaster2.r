@@ -180,120 +180,120 @@ phase.shift <- srp.shift(days[1], days[2]);
 bh <- bh.effect(days[1], days[2]);
 easter <- easter.effect(days[1], days[2]);
 explanatory <- cbind(phase.shift[, c(1:2, 10:12)], bh, easter);
-## explanatory <- cbind(phase.shift, bh, easter);
 
-sma <- c("s3x1", "s3x3", "s3x5", "s3x9", "s3x15", "stable", "x11default");
-trendma <- c(9, 13, 23);
+the.day <- "2018-12-01";
+
+stmt <- paste(
+    "select",
+    "non_specialized_food_f,",
+    "specialist_food_f,",
+    "drinks_tobacco_f,",
+    "non_specialized_non_food_f,",
+    "textiles_f,",
+    "clothing_f,",
+    "footwear_f,",
+    "furniture_f,",
+    "electrical_f,",
+    "hardware_f,",
+    "music_f,",
+    "pharmaceutical_etc_f,",
+    "books_etc_f,",
+    "floor_cover_f,",
+    "computer_telcomm_f,",
+    "other_specialized_f,",
+    "mail_order_f,",
+    "other_non_store_f,",
+    "fuel_f",
+    "from UK_RSI_food",
+    "join UK_RSI_non_specialized_non_food",
+    "join UK_RSI_textiles_etc",
+    "join UK_RSI_household_goods",
+    "join UK_RSI_pharmaceutical_etc",
+    "join UK_RSI_books_etc",
+    "join UK_RSI_floor_cover",
+    "join UK_RSI_computer_telcomm",
+    "join UK_RSI_other_specialized",
+    "join UK_RSI_non_store",
+    "join UK_RSI_fuel",
+    "on",
+    "UK_RSI_food.mon = UK_RSI_non_specialized_non_food.mon",
+    "and UK_RSI_food.mon = UK_RSI_textiles_etc.mon",
+    "and UK_RSI_food.mon = UK_RSI_household_goods.mon",
+    "and UK_RSI_food.mon = UK_RSI_pharmaceutical_etc.mon",
+    "and UK_RSI_food.mon = UK_RSI_books_etc.mon",
+    "and UK_RSI_food.mon = UK_RSI_floor_cover.mon",
+    "and UK_RSI_food.mon = UK_RSI_computer_telcomm.mon",
+    "and UK_RSI_food.mon = UK_RSI_other_specialized.mon",
+    "and UK_RSI_food.mon = UK_RSI_non_store.mon",
+    "and UK_RSI_food.mon = UK_RSI_fuel.mon",
+    sprintf("where UK_RSI_food.mon = '%s';", the.day)
+);
+rs <- dbSendQuery(database, stmt);
+forecast <- as.vector(fetch(rs));
+dbClearResult(rs);
+
+## Get the weights of the sectors
+sector.weights <- rep(NA, length(forecast));
+columns <- attributes(forecast)$names;
+for (j in 1:length(columns)) {
+    columns[j] <- substr(columns[j], start=1, stop=nchar(columns[j])-2);
+    stmt <- paste(
+        "select weight",
+        "from uk_rsi_sector_weights",
+        sprintf("where category='%s'", columns[j])
+    );
+    rs <- dbSendQuery(database, stmt);
+    sector.weights[j] <- fetch(rs)$weight;
+}
+overall <- sum(sector.weights * forecast)/sum(sector.weights);
+
+## For seasonal adjustment:
+## seasonal MA: s3x9
+## trend MA: Henderson 9
+## use 108 months, i.e. 9 years data
+
 
 rs <- dbSendQuery(
     database,
     paste(
-        "select distinct mon_pub from rsi_history",
-        "where year(mon_pub) < year(curdate())"
+        "select mon, unadjusted from rsi_history",
+        "where mon_pub = date_add('", the.day, "', interval -1 month)",
+        "order by mon desc limit 107"
     )
 );
-mon.pub <- fetch(rs)[[1]];
+df <- fetch(rs);
 dbClearResult(rs);
 
-trendma <- seq(from=5, to=31, by=2);
-## scores <- matrix(NA, nrow=length(sma), ncol=length(trendma));
-scores <- matrix(NA, nrow=1, ncol=length(trendma));
-## for (a in 1:length(sma)) {
-for (a in 4) {
-    for (b in 1:length(trendma)) {
-        errors <- rep(NA, length(mon.pub) - 1);
-        for (i in 1:length(errors)) {
-            stmt <- paste(
-                "select mon, unadjusted, adjusted from rsi_history",
-                "where mon_pub = '", mon.pub[i], "'",
-                "order by mon"
-            );
-            rs <- dbSendQuery(database, stmt);
-            series <- fetch(rs);
-            dbClearResult(rs);
+unadjusted <- rev(c(overall, df$unadjusted));
+unadjusted.ts <- ts(
+    data = unadjusted,
+    start=c(as.numeric(substr(tail(df$mon, n=1), start=1, stop=4)),
+            as.numeric(substr(tail(df$mon, n=1), start=6, stop=7))),
+    frequency=12
+);
+out <- seas(
+    unadjusted.ts,
+    transform.function="log",
+    regression.aictest="user",
+    regression.user=sprintf("x%d", 1:dim(explanatory)[2]),
+    regression.data=as.vector(t(explanatory)),
+    regression.start=gsub(
+        "-", ".",
+        substr(days[1], start=1, stop=7)
+    ),
+    x11.seasonalma="s3x9",
+    x11.trendma=9
+);
+adjusted <- out$data[, "final"];
 
-            unadjusted <- ts(
-                data = series$unadjusted,
-                start=c(as.numeric(substr(series$mon[1], start=1, stop=4)),
-                        as.numeric(substr(series$mon[1], start=6, stop=7))),
-                frequency=12
-            );
-            out <- seas(
-                unadjusted,
-                transform.function="log",
-                regression.aictest="user",
-                ## regression.aictest="user,td",
-                regression.user=sprintf("x%d", 1:dim(explanatory)[2]),
-                regression.data=as.vector(t(explanatory)),
-                regression.start=gsub(
-                    "-", ".",
-                    substr(days[1], start=1, stop=7)
-                ),
-                x11.seasonalma=sma[a],
-                x11.trendma=trendma[b]
-            );
-            rs <- dbSendQuery(
-                database,
-                paste(
-                    "select adjusted from rsi_history",
-                    "where mon = '", mon.pub[i], "'",
-                    "and mon_pub = '", mon.pub[i], "'"
-                )
-            );
-            adjusted <- fetch(rs)[[1]];
-            errors[i] <- tail(out$data[, "final"], 1)/adjusted - 1;
-            ## errors <- tail(out$data[, "final"], 1)/adjusted - 1;
-            dbClearResult(rs);
-        }
-        scores[1, b] <- mean(abs(errors));
-   }
-}
-
-## M <- matrix(NA, length(mon.pub)-1, 2);
-M <- rep(NA, length(mon.pub));
-for (n in seq(from=96, by=12, to=240)) {
-    V <- matrix(NA, length(mon.pub), 2);
-    for (i in 1:length(mon.pub)) {
-        stmt <- paste(
-            "select mon, unadjusted, adjusted from rsi_history",
-            "where mon_pub = '", mon.pub[i], "'",
-            "order by mon desc limit ", n
-        );
-        rs <- dbSendQuery(database, stmt);
-        series <- fetch(rs);
-        dbClearResult(rs);
-
-        N <- dim(series)[1];
-        unadjusted <- ts(
-            data = rev(series[, "unadjusted"]),
-            start=c(as.numeric(substr(series[N, "mon"], start=1, stop=4)),
-                    as.numeric(substr(series[N, "mon"], start=6, stop=7))),
-            frequency=12
-        );
-        out <- seas(
-            unadjusted,
-            transform.function="log",
-            regression.aictest="user",
-            regression.user=sprintf("x%d", 1:dim(explanatory)[2]),
-            regression.data=as.vector(t(explanatory)),
-            regression.start=gsub(
-                "-", ".",
-                substr(days[1], start=1, stop=7)
-            ),
-            x11.seasonalma="s3x9",
-            x11.trendma=9
-        );
-        V[i, ] <- c(tail(out$data[, "final"], 1), series[1, "adjusted"]);
-        dbClearResult(rs);
-    }
-    M <- cbind(M, V);
-}
-M <- M[, -1];
-
-results <- unlist(lapply(
-    seq(from=1, by=2, to=dim(M)[2]),
-    FUN=function(i) mean(abs(M[, i] - M[, i+1]))
-));
-which.min(unlist(results));
+rs <- dbSendQuery(
+    database,
+    paste(
+        "select mon, unadjusted, adjusted from rsi_history",
+        "where mon_pub='", the.day, "' order by mon desc",
+        "limit 2"
+    )
+);
+reported <- fetch(rs);
+dbClearResult(rs);
 dbDisconnect(database);
-

@@ -14,13 +14,13 @@ predict.retails <- function(category, columns, which.mon)
         "W.Tmean + 273.15 as Tmean,",
         "W.Tmax + 273.15 as Tmax,",
         "W.sunshine, W.rainfall, W.raindays1mm,",
-        ##    "H.furniture, H.electrical, H.hardware, H.music",
         paste(columns, collapse=", "),
         "from UK_weather as W join",
         sprintf("UK_RSI_%s as H on", category),
         "W.mon = H.mon",
         sprintf("where H.mon < '%s'", which.mon),
-        "order by W.mon desc limit 240;"
+        "order by W.mon desc limit 108;"
+        ## "order by W.mon desc limit 240;"
     );
     rs <- dbSendQuery(database, stmt);
     data <- fetch(rs);
@@ -240,34 +240,18 @@ categories <- c(
 conn = dbConnect(MySQL(), user='sinbaski', password='q1w2e3r4',
                  dbname='LBG', host="localhost");
 
-rs <- dbSendQuery(
-    conn,
-    paste(
-        "select A.mon from UK_RSI_fuel as A join UK_weather as B",
-        "on A.mon = b.mon",
-        "where fuel_f is not NULL",
-##        "and mon < '2018-02-01'",
-        "order by mon desc"
-    )
-);
-dates <- fetch(rs)$mon;
-dbClearResult(rs);
-
-## dates <- "2018-11-01";
-
-for (i in 1:length(dates)) {
-    for (j in 1:length(categories)) {
-        col_names <- {};
-        rs <- dbSendQuery(
-            conn, sprintf("show columns in UK_RSI_%s;", categories[j])
-        );
-        fields <- fetch(rs);
-        dbClearResult(rs);
-        for (f in fields$Field) {
-            if (f == "mon" || endsWith(f, "_f")) next;
-            col_names <- append(col_names, f);
-        }
-        predict.retails(categories[j], col_names, dates[i]);
+the.day <- "2018-12-01"
+for (j in 1:length(categories)) {
+    col_names <- {};
+    rs <- dbSendQuery(
+        conn, sprintf("show columns in UK_RSI_%s;", categories[j])
+    );
+    fields <- fetch(rs);
+    dbClearResult(rs);
+    for (f in fields$Field) {
+        if (f == "mon" || endsWith(f, "_f")) next;
+        col_names <- append(col_names, f);
     }
+    predict.retails(categories[j], col_names, the.day);
 }
 dbDisconnect(conn);
