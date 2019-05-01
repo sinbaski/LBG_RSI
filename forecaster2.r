@@ -1,4 +1,5 @@
 rm(list=ls());
+library(sets)
 library(RMySQL);
 library(seasonal);
 
@@ -165,7 +166,6 @@ easter.effect <- function(d1, d2)
     return(A);
 }
 
-
 database = dbConnect(MySQL(), user='sinbaski', password='q1w2e3r4',
                      dbname='LBG', host="localhost");
 
@@ -173,79 +173,112 @@ rs <- dbSendQuery(
     database,
     "select min(mon), max(mon) from uk_rsi_standard_reporting_period;"
 );
-days <- fetch(rs);
+srp.days <- fetch(rs);
 dbClearResult(rs);
 
-phase.shift <- srp.shift(days[1], days[2]);
-bh <- bh.effect(days[1], days[2]);
-easter <- easter.effect(days[1], days[2]);
+phase.shift <- srp.shift(srp.days[1], srp.days[2]);
+bh <- bh.effect(srp.days[1], srp.days[2]);
+easter <- easter.effect(srp.days[1], srp.days[2]);
 explanatory <- cbind(phase.shift[, c(1:2, 10:12)], bh, easter);
 
-the.day <- "2018-12-01";
+## the.day <- "2018-12-01";
 
-stmt <- paste(
-    "select",
-    "non_specialized_food_f,",
-    "specialist_food_f,",
-    "drinks_tobacco_f,",
-    "non_specialized_non_food_f,",
-    "textiles_f,",
-    "clothing_f,",
-    "footwear_f,",
-    "furniture_f,",
-    "electrical_f,",
-    "hardware_f,",
-    "music_f,",
-    "pharmaceutical_etc_f,",
-    "books_etc_f,",
-    "floor_cover_f,",
-    "computer_telcomm_f,",
-    "other_specialized_f,",
-    "mail_order_f,",
-    "other_non_store_f,",
-    "fuel_f",
-    "from UK_RSI_food",
-    "join UK_RSI_non_specialized_non_food",
-    "join UK_RSI_textiles_etc",
-    "join UK_RSI_household_goods",
-    "join UK_RSI_pharmaceutical_etc",
-    "join UK_RSI_books_etc",
-    "join UK_RSI_floor_cover",
-    "join UK_RSI_computer_telcomm",
-    "join UK_RSI_other_specialized",
-    "join UK_RSI_non_store",
-    "join UK_RSI_fuel",
-    "on",
-    "UK_RSI_food.mon = UK_RSI_non_specialized_non_food.mon",
-    "and UK_RSI_food.mon = UK_RSI_textiles_etc.mon",
-    "and UK_RSI_food.mon = UK_RSI_household_goods.mon",
-    "and UK_RSI_food.mon = UK_RSI_pharmaceutical_etc.mon",
-    "and UK_RSI_food.mon = UK_RSI_books_etc.mon",
-    "and UK_RSI_food.mon = UK_RSI_floor_cover.mon",
-    "and UK_RSI_food.mon = UK_RSI_computer_telcomm.mon",
-    "and UK_RSI_food.mon = UK_RSI_other_specialized.mon",
-    "and UK_RSI_food.mon = UK_RSI_non_store.mon",
-    "and UK_RSI_food.mon = UK_RSI_fuel.mon",
-    sprintf("where UK_RSI_food.mon = '%s';", the.day)
+rs <- dbSendQuery(
+    database,
+    paste(
+        "select mon from uk_rsi_food",
+        "where mon = mon_pub",
+        "and date_add(mon, interval -1 month) in (",
+        "    select distinct mon_pub from uk_rsi_food",
+        ");"
+    )
 );
-rs <- dbSendQuery(database, stmt);
-forecast <- as.vector(fetch(rs));
+days <- fetch(rs)$mon;
+
+rs <- dbSendQuery(
+    database,
+    "select distinct grp from uk_rsi_sector_weights"
+);
+tables <- fetch(rs)$grp;
 dbClearResult(rs);
 
-## Get the weights of the sectors
-sector.weights <- rep(NA, length(forecast));
-columns <- attributes(forecast)$names;
-for (j in 1:length(columns)) {
-    columns[j] <- substr(columns[j], start=1, stop=nchar(columns[j])-2);
-    stmt <- paste(
-        "select weight",
-        "from uk_rsi_sector_weights",
-        sprintf("where category='%s'", columns[j])
+results <- matrix(NA, length(days), 2);
+for (d in 1:length(days)) {
+    overall <- c(0, 0);
+    for (i in 1:length(tables)) {
+        rs <- dbSendQuery(
+            database,
+            paste(
+                "select category, weight from uk_rsi_sector_weights",
+                sprintf("where grp = '%s'", tables[i]),
+                sprintf("and mon_pub = date_add('%s', interval -1 month);", days[d])
+            )
+        );
+        df <- fetch(rs);
+        dbClearResult(rs);
+
+        rs <- dbSendQuery(
+            database,
+            paste(
+                "select", paste(paste(df$category, "_f", sep=""), collapse=", "),
+                "from", tables[i],
+                sprintf("where mon = '%s'", days[d]),
+                sprintf("and mon_pub = date_add('%s', interval -1 month)", days[d])
+            )
+        );
+        df2 <- fetch(rs);
+        dbClearResult(rs);
+        overall[1] <- overall[1] + sum(df2 * df$weight);
+        overall[2] <- overall[2] + sum(df$weight);
+    }
+    overall <- overall[1]/overall[2];
+
+    rs <- dbSendQuery(
+        database,
+        paste(
+            "select mon, unadjusted from rsi_history",
+            "where mon_pub = date_add('", days[d], "', interval -1 month)",
+            sprintf("and mon < '%s'", days[d]),
+            "order by mon desc limit 107"
+        )
     );
-    rs <- dbSendQuery(database, stmt);
-    sector.weights[j] <- fetch(rs)$weight;
+    df <- fetch(rs);
+    dbClearResult(rs);
+
+    unadjusted <- rev(c(overall, df$unadjusted));
+    unadjusted.ts <- ts(
+        data = unadjusted,
+        start=c(as.numeric(substr(tail(df$mon, n=1), start=1, stop=4)),
+                as.numeric(substr(tail(df$mon, n=1), start=6, stop=7))),
+        frequency=12
+    );
+    out <- seas(
+        unadjusted.ts,
+        transform.function="log",
+        regression.aictest="user",
+        regression.user=sprintf("x%d", 1:dim(explanatory)[2]),
+        regression.data=as.vector(t(explanatory)),
+        regression.start=gsub(
+            "-", ".",
+            substr(srp.days[1], start=1, stop=7)
+        ),
+        x11.seasonalma="s3x9",
+        x11.trendma=9
+    );
+    adjusted <- tail(out$data[, "final"], 1);
+
+    rs <- dbSendQuery(
+        database,
+        sprintf(
+            "select adjusted from rsi_history where mon_pub='%s' and mon_pub = mon",
+            days[d]
+        )
+    );
+    reported <- fetch(rs)$adjusted;
+    dbClearResult(rs);
+    results[d, ] <- c(reported, adjusted);
 }
-overall <- sum(sector.weights * forecast)/sum(sector.weights);
+dbDisconnect(database);
 
 ## For seasonal adjustment:
 ## seasonal MA: s3x9
@@ -253,47 +286,5 @@ overall <- sum(sector.weights * forecast)/sum(sector.weights);
 ## use 108 months, i.e. 9 years data
 
 
-rs <- dbSendQuery(
-    database,
-    paste(
-        "select mon, unadjusted from rsi_history",
-        "where mon_pub = date_add('", the.day, "', interval -1 month)",
-        "order by mon desc limit 107"
-    )
-);
-df <- fetch(rs);
-dbClearResult(rs);
 
-unadjusted <- rev(c(overall, df$unadjusted));
-unadjusted.ts <- ts(
-    data = unadjusted,
-    start=c(as.numeric(substr(tail(df$mon, n=1), start=1, stop=4)),
-            as.numeric(substr(tail(df$mon, n=1), start=6, stop=7))),
-    frequency=12
-);
-out <- seas(
-    unadjusted.ts,
-    transform.function="log",
-    regression.aictest="user",
-    regression.user=sprintf("x%d", 1:dim(explanatory)[2]),
-    regression.data=as.vector(t(explanatory)),
-    regression.start=gsub(
-        "-", ".",
-        substr(days[1], start=1, stop=7)
-    ),
-    x11.seasonalma="s3x9",
-    x11.trendma=9
-);
-adjusted <- out$data[, "final"];
 
-rs <- dbSendQuery(
-    database,
-    paste(
-        "select mon, unadjusted, adjusted from rsi_history",
-        "where mon_pub='", the.day, "' order by mon desc",
-        "limit 2"
-    )
-);
-reported <- fetch(rs);
-dbClearResult(rs);
-dbDisconnect(database);
