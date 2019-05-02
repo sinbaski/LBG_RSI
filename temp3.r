@@ -28,9 +28,12 @@ predict.retails <- function(category, columns, which.mon)
     dbClearResult(rs);
 
     D <- apply(as.matrix(data[, -1]), MARGIN=2, FUN=rev);
-    log.weather <- log(D[, 1:6]);
-    E.weather <- eigen(cov(log.weather));
-    weather.factor <- log.weather %*% E.weather$vectors[, 1:2];
+    ## log.weather <- log(D[, 1:6]);
+    ## E.weather <- eigen(cov(log.weather));
+    ## weather.factor <- log.weather %*% E.weather$vectors[, 1:2];
+    E.weather <- eigen(cov(D[, 1:6]));
+    weather.factor <- D[, 1:6] %*% E.weather$vectors[, 1:2];
+
     weather.factor.avg <- apply(weather.factor, MARGIN=2, FUN=mean);
     weather.factor <- sapply(1:2, FUN=function(i) weather.factor[, i] - weather.factor.avg[i]);
 
@@ -131,7 +134,8 @@ predict.retails <- function(category, columns, which.mon)
     X <- as.matrix(fetch(rs));
     dbClearResult(rs);
 
-    Y <- log(X) %*% E.weather$vectors[, 1:2];
+    ## Y <- log(X) %*% E.weather$vectors[, 1:2];
+    Y <- X %*% E.weather$vectors[, 1:2];
     Y <- sapply(1:2, FUN=function(i) Y[, i] - weather.factor.avg[i]);
 
     factor.pred <- Y %*% regrs.coef + predictions[, 1];
@@ -204,17 +208,21 @@ categories <- c(
     "fuel"
 );
 
-days <- c(
-    ## "2018-03-01",
-    ## "2018-04-01",
-    ## "2018-05-01",
-    ## "2018-06-01",
-    ## "2018-07-01"
-    "2019-04-01"
-);
-
 conn = dbConnect(MySQL(), user='sinbaski', password='q1w2e3r4',
                  dbname='LBG', host="localhost");
+
+rs <- dbSendQuery(
+    conn,
+    paste(
+        "select mon from uk_rsi_food",
+        "where mon = mon_pub",
+        "and date_add(mon, interval -1 month) in (",
+        "    select distinct mon_pub from uk_rsi_food",
+        ");"
+    )
+);
+days <- fetch(rs)$mon;
+
 
 ## the.day <- "2018-08-01"
 for (the.day in days) {

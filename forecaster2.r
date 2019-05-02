@@ -252,6 +252,10 @@ for (d in 1:length(days)) {
                 as.numeric(substr(tail(df$mon, n=1), start=6, stop=7))),
         frequency=12
     );
+    ## For seasonal adjustment:
+    ## seasonal MA: s3x9
+    ## trend MA: Henderson 9
+    ## use 108 months, i.e. 9 years data
     out <- seas(
         unadjusted.ts,
         transform.function="log",
@@ -280,10 +284,13 @@ for (d in 1:length(days)) {
 }
 dbDisconnect(database);
 
-## For seasonal adjustment:
-## seasonal MA: s3x9
-## trend MA: Henderson 9
-## use 108 months, i.e. 9 years data
+deviations <- results[, 2] - results[, 1];
+
+plot(1:dim(results)[1], results[, 1],
+     ylim=c(min(results), max(results)),
+     type="b", col="#FF0000");
+lines(1:dim(results)[1], results[, 2], type="b", col="#0000FF");
+
 
 
 
