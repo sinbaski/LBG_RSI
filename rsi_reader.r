@@ -1,6 +1,7 @@
 rm(list=ls());
 library(RMySQL);
-library(openxlsx);
+library(gdata);
+
 
 get.col.num <- function(label)
 {
@@ -58,12 +59,15 @@ database = dbConnect(MySQL(), user='sinbaski', password='q1w2e3r4',
                      dbname='LBG', host="localhost");
 idx1 <- 10;
 sheet <- 21;
-for (v in 35:47) {
-    datafile <- sprintf("data/rsi-v%d.xlsx", v);
-    data <- read.xlsx(datafile, sheet=sheet, startRow=idx1, cols=1, colNames=FALSE);
-    idx2 <- min(which(!grepl('[0-9]{4} [A-Z][a-z]{2}', data$X1))) + idx1 - 2;
-    dates <- data$X1[1:(idx2 - idx1 + 1)];
-    dates <- unlist(lapply(dates, make.date.str));
+for (v in 29:31) {
+    datafile <- sprintf("data/rsi-v%d.xls", v);
+    df1 <- read.xls(
+        datafile, sheet=sheet, perl="C:/cygwin64/bin/perl",
+        blank.lines.skip=FALSE, header=FALSE, skip=7
+    );
+    n <- dim(df1)[1];
+    data <- head(df1[3:n, ], which(! grepl("[0-9]{4} [A-Z][a-z]{2}", df1$V1[3:n], perl=TRUE))[1] - 1);
+    dates <- unlist(lapply(data[, 1], make.date.str));
     D <- tail(dates, 1);
 
     rs <- dbSendQuery(database,  "select distinct grp as G from uk_rsi_data_sheets");
@@ -85,12 +89,8 @@ for (v in 35:47) {
         columns <- columns[J];
         sec <- sectors$sector[J];
 
-        data <- read.xlsx(
-            datafile, sheet=21, rows=idx1:idx2, cols=columns,
-            skipEmptyRows=FALSE, colNames=FALSE
-        );
         L <- lapply(1:dim(data)[1], FUN=function(j) {
-            paste("(", sprintf("'%s', '%s',", dates[j], D), paste(data[j, ], collapse=","), ")")
+            paste("(", sprintf("'%s', '%s',", dates[j], D), paste(data[j, columns], collapse=","), ")")
         });
         L <- gsub(intToUtf8(160), "NULL", L);
         stmt <- paste(L, collapse=",");
@@ -115,11 +115,7 @@ for (v in 35:47) {
     sectors <- df$sector[P];
     groups <- df$grp[P];
 
-    df2 <- read.xlsx(
-        datafile, sheet=sheet, rows=8,
-        cols=columns, colNames=FALSE
-    );
-    L <- unlist(lapply(df2, FUN=function(s) gsub("\\(£([0-9]+),?([0-9]+)m\\)", "\\1\\2", x=s)));
+    L <- unlist(lapply(df1[1, columns], FUN=function(s) gsub("\\(£([0-9]+),?([0-9]+)m\\)", "\\1\\2", x=s)));
 
     for (i in  1:length(columns)) {
         rs <- dbSendQuery(
