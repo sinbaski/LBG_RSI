@@ -186,11 +186,12 @@ explanatory <- cbind(phase.shift[, c(1:2, 10:12)], bh, easter);
 rs <- dbSendQuery(
     database,
     paste(
-        "select mon from uk_rsi_food",
-        "where mon = mon_pub",
-        "and date_add(mon, interval -1 month) in (",
-        "    select distinct mon_pub from uk_rsi_food",
-        ");"
+        "   select mon from uk_rsi_food",
+        "   where mon = date_add(mon_pub, interval 1 month)",
+        "   and mon in (",
+        "   select distinct mon from uk_rsi_food",
+        "   where mon = mon_pub",
+        "   );"
     )
 );
 days <- fetch(rs)$mon;
