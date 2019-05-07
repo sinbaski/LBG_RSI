@@ -59,10 +59,14 @@ database = dbConnect(MySQL(), user='sinbaski', password='q1w2e3r4',
                      dbname='LBG', host="localhost");
 idx1 <- 10;
 sheet <- 21;
-for (v in 29:31) {
+for (v in 16:22) {
     datafile <- sprintf("data/rsi-v%d.xls", v);
+    ## df1 <- read.xls(
+    ##     datafile, sheet=21, perl="C:/cygwin64/bin/perl",
+    ##     blank.lines.skip=FALSE, header=FALSE, skip=0, nrows=5
+    ## );
     df1 <- read.xls(
-        datafile, sheet=sheet, perl="C:/cygwin64/bin/perl",
+        datafile, sheet=21, perl="C:/cygwin64/bin/perl",
         blank.lines.skip=FALSE, header=FALSE, skip=7
     );
     n <- dim(df1)[1];
@@ -90,7 +94,12 @@ for (v in 29:31) {
         sec <- sectors$sector[J];
 
         L <- lapply(1:dim(data)[1], FUN=function(j) {
-            paste("(", sprintf("'%s', '%s',", dates[j], D), paste(data[j, columns], collapse=","), ")")
+            str <- paste(data[j, columns], collapse=",");
+            if (nchar(str) > 0) {
+                return(paste("(", sprintf("'%s', '%s',", dates[j], D), str, ")"));
+            } else {
+                return(paste("(", sprintf("'%s', '%s', NULL", dates[j], D), ")"));
+            }
         });
         L <- gsub(intToUtf8(160), "NULL", L);
         stmt <- paste(L, collapse=",");
