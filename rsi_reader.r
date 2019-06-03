@@ -62,11 +62,11 @@ sheet <- 21;
 for (v in 16:22) {
     datafile <- sprintf("data/rsi-v%d.xls", v);
     ## df1 <- read.xls(
-    ##     datafile, sheet=21, perl="C:/cygwin64/bin/perl",
+    ##     datafile, sheet=sheet, perl="C:/cygwin64/bin/perl",
     ##     blank.lines.skip=FALSE, header=FALSE, skip=0, nrows=5
     ## );
     df1 <- read.xls(
-        datafile, sheet=21, perl="C:/cygwin64/bin/perl",
+        datafile, sheet=sheet, perl="C:/cygwin64/bin/perl",
         blank.lines.skip=FALSE, header=FALSE, skip=7
     );
     n <- dim(df1)[1];
@@ -78,6 +78,12 @@ for (v in 16:22) {
     tables <- fetch(rs);
     dbClearResult(rs);
     for (i in 1:dim(tables)[1]) {
+        rs <- dbSendQuery(
+            database,
+            sprintf("delete from %s where mon_pub = '%s'", tables$G[i], D)
+        );
+        dbClearResult(rs);
+
         rs <- dbSendQuery(
             database,
             sprintf(

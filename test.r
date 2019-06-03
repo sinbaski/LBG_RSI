@@ -22,79 +22,61 @@ convert.date.str <- function(str1)
 database = dbConnect(MySQL(), user='sinbaski', password='q1w2e3r4',
                      dbname='LBG', host="localhost");
 
-for (i in 35) {
-    indices <- matrix(NA, 2, 2);
-    ## df1 <- read.xlsx(
-    ##     sprintf("data/rsi-v%d.xlsx", i),
-    ##     sheet=15, cols=1:2,
-    ##     colNames=FALSE, skipEmptyRows=FALSE
-    ## );
+sheet1 <- 15;
+sheet2 <- 21;
+
+## sheet1 <- 19;
+## sheet2 <- 25;
+
+## sheet1 <- 18;
+## sheet2 <- 24;
+
+for (i in 20:23) {
     df1 <- read.xls(
         sprintf("data/rsi-v%d.xls", i),
-        sheet=15, perl="C:/cygwin64/bin/perl",
+        sheet=sheet1, perl="C:/cygwin64/bin/perl",
+        blank.lines.skip=FALSE, header=FALSE, skip=0, nrows=5
+    );
+
+    df1 <- read.xls(
+        sprintf("data/rsi-v%d.xls", i),
+        sheet=sheet1, perl="C:/cygwin64/bin/perl",
         blank.lines.skip=FALSE, header=FALSE, skip=10
     );
     idx1 <- which(!grepl("[0-9]{4} [A-Z]{1}[a-z]{2}", df1$V1))[1] - 1;
     df1 <- df1[1:idx1, 1:2];
 
-    ## indices[1, 1] <- which(df1$X1 == '1996 Jan')[1];
-    ## A <- grep("[0-9]{4} [A-Z]{1}[a-z]{2}", tail(df1$X1, n=-indices[1, 1]+1));
-    ## indices[1, 2] <- indices[1, 1] - 1 + which(diff(A) > 1);
-
     df2 <- read.xls(
         sprintf("data/rsi-v%d.xls", i),
-        sheet=21, perl="C:/cygwin64/bin/perl",
+        sheet=sheet2, perl="C:/cygwin64/bin/perl",
+        blank.lines.skip=FALSE, header=FALSE, skip=0, nrows=5
+    );
+    df2 <- read.xls(
+        sprintf("data/rsi-v%d.xls", i),
+        sheet=sheet2, perl="C:/cygwin64/bin/perl",
         blank.lines.skip=FALSE, header=FALSE, skip=9
     );
     idx2 <- which(!grepl("[0-9]{4} [A-Z]{1}[a-z]{2}", df2$V1))[1] - 1;
     df2 <- df2[1:idx2, 1:2];
 
+    A <- unlist(lapply(1:length(df2$V2), FUN=function(k) nchar(paste(df2$V2[k]))));
+    df1 <- df1[which(A > 0), ];
+    df2 <- df2[which(A > 0), ];
 
-    ## indices[2, 1] <- which(df2$X1 == '1996 Jan')[1];
-    ## A <- grep("[0-9]{4} [A-Z]{1}[a-z]{2}", tail(df2$X1, n=-indices[2, 1]+1));
-    ## indices[2, 2] <- indices[2, 1] - 1 + which(diff(A) > 1);
-
-    rs <- dbSendQuery(
-        database,
-        "select distinct mon_pub from rsi_history"
-    );
-    dates <- fetch(rs)[[1]];
-    dbClearResult(rs);
-
-    str <- paste(df1[idx1, 1]);
-    str <- paste(sep="-", substr(str, 1, 4), convert.date.str(substr(str, 6, 8)), "01");
-    if (str %in% dates) {
-        warning(paste("Publication date", str, "already exists"));
-        next;
-    }
-
-    str <- paste(df2[idx2, 1]);
-    str <- paste(sep="-", substr(str, 1, 4), convert.date.str(substr(str, 6, 8)), "01");
-    if (str %in% dates) {
-        warning(paste("Publication date", str, "already exists"));
-        next;
-    }
-
-    L <- unlist(lapply(1:idx1, FUN=function(j) nchar(paste(df1[j, 2]))));
-    idx <- which(L > 0)[1];
-    ## if (indices[1, 2] - indices[1, 1] !=  indices[2, 2] - indices[2, 1] ||
-    ##     sum(df1$X1[indices[1, 1]:indices[1, 2]] != df2$X1[indices[2, 1]:indices[2, 2]]) > 0) {
-    ##     stop(sprintf("errors in v%d.xlsx", i));
-    ## }
-    dates <- unlist(lapply(idx:idx1, function(j) {
+    dates <- unlist(lapply(1:dim(df1)[1], function(j) {
         str <- df1[j, 1];
         return(paste(sep="-", substr(str, 1, 4), convert.date.str(substr(str, 6, 8)), "01"));
     }));
     last.mon <- tail(dates, 1);
-    values = data.frame(
-        "mon"=dates,
-        "unadjusted"=df1[idx:idx1, 2],
-        "adjusted"=df2[idx:idx2, 2]
-    );
-    stmt <- paste(apply(values, MARGIN=1, FUN=function(x) {
-        sprintf("('%s', '%s', '%s', '%s')", x[1], last.mon, x[2], x[3]);
-    }), collapse=", ");
+    stmt <- paste((lapply(1:dim(df1)[1], FUN=function(k) {
+        sprintf("('%s', '%s', '%s', '%s')", dates[k], last.mon, df2[k, 2], df1[k, 2]);
+    })), collapse=", ");
     stmt <- paste("insert into rsi_history values", stmt, sep=" ");
+    rs <- dbSendQuery(
+        database,
+        sprintf("delete from rsi_history where mon_pub = '%s';", last.mon)
+    );
+    dbClearResult(rs);
     rs <- dbSendQuery(database, stmt);
     dbClearResult(rs);
 }
