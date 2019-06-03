@@ -1,0 +1,1760 @@
+\documentclass[a4paper,11pt,pdftex,twoside,titlepage]{article}
+\input{../kkasi/physics_common.tex}
+\usepackage[technical]{mv-doc}
+\usepackage{subcaption}
+\usepackage{multirow}
+
+\newcommand{\LastRevisionDate}{\today} % TODO Put the date of the latest revision here
+\newcommand{\LastVersion}{1} % TODO Put the number of the latest revision here
+
+\title
+{
+\begin{center}
+\includegraphics[width=30mm]{Logo}
+\end{center}
+\vspace{4cm}
+\begin{tabular}{ll}
+{\normalsize Title:                      } & {\large {\bf {Markets
+                                             Response to forecast discrepancies}}                                          }\\	% TODO Replace 'Model Name' with the name of the model being validated
+\vspace{4cm}			
+{\normalsize                             } & {\large {\bf {Model Validation Technical Report}}                   }\\
+{\normalsize Reference:                  } & {\normalsize MV-ER-1644Category-2018                          }\\ % Replace TODO with the internal reference
+% The reference is generated here http://teamspace.intranet.group/sites/GR_ModelInvntry/mktprice/Lists/Model%20Documentation/AllItems.aspx
+{\normalsize Version:                    } & {\normalsize \LastVersion                                           }\\ 
+{\normalsize Date:                       } & {\normalsize \LastRevisionDate                                      }\\
+{\normalsize Team:                       } & {\normalsize Risk Methodology \& Models / Pricing Model Validation  }\\
+{\normalsize Authors:                    } & {\normalsize Xiaolei \textsc{Xie}                    }\\ % TODO Replace 'TODOFirstName' with your first name and 'TODOLastName' with your last name
+{\normalsize Reviewer:                   } & {\normalsize Mugad \textsc{Oumgari}                                 }\\
+{\normalsize Email:                      } & {\normalsize xiaolei.xie@lloydsbanking.com                                                   }\\	% TODO Replace 'TODO' with your work email address 
+{\normalsize Distribution:               } & {\normalsize INTERNAL USE ONLY                                      }
+\end{tabular} 
+}
+
+% \author{Xiaolei Xie}
+% \date{\today}
+
+\begin{document}
+
+\maketitle
+
+\pagestyle{empty}
+\pagenumbering{alph}
+
+\begin{center}
+\begin{tabular}{|c|c|c|l|}
+\hline
+\multicolumn{4}{|c|}{{\bf Revision History}} \\
+\hline
+{\bf Author} & {\bf Version} & {\bf Date} & {\bf Comment} \\
+\hline
+% TODO Put the details of this version here.
+% So for the first version of the report the entry would look like
+Xiaolei Xie & \LastVersion & \LastRevisionDate & Initial Version \\
+\hline
+\end{tabular} 
+\end{center} 
+
+\clearpage
+
+\pagestyle{fancy}
+\renewcommand{\sectionmark} [1] {\markboth {\bfseries \thesection. #1} {}}
+
+\pagenumbering{roman}
+\setcounter{page}{1}
+
+\tableofcontents
+
+\cleardoublepage
+
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction to the Problem}
+Macroeconomic indicators provide an overall picture of the national
+economy and undoubtedly have a huge impact on the market when they are
+released. Here in the UK, such influential indicators include, for
+example, retail sales, unemployment rate, wages rate, inflation, GDP,
+services PMI, etc. Among others, interest rate swaps, foreign exchange
+rates, and equities are strongly influenced by these indicators.
+
+Before the publication of an indicator value, which happens on a
+monthly basis, financial institutions publish their own estimate of
+the value. When the actual value is released, and if there is a
+discrepancy between the actual value and the institutions estimates,
+the market will react to the discrepancy and re-align itself to the
+macroeconomic conditions revealed by the new data.
+
+It is the intention of this work to understand the impact to the market,
+as measured by the percentage change of a benchmark e.g. FTSE100 index,
+GBP/EUR spot rate, that is caused by the discrepancies between the
+actual indicator value and its estimates prior to the publication. In
+the rest of this report, what we call ``the index'' can refer to any
+of these benchmarks.
+
+\section{Goldman-Sachs' analysis of the impact of US Payroll data on
+  bonds market}
+M. Crimella at Goldman Sachs studied the impact of the US Non-farm
+Payroll (NFP) data on the US treasury curve. He regressed the daily
+changes in nominal, inflation-indexed and breakeven zero coupon yield
+on 35 macroeconomic suprises, including the NFP. This also allowed the
+author to gain an insight into the low-frequency response of the
+treasury curve to the macroeconomic data release.
+
+Crimella also developed an {\it index of macroeconomic surprises},
+which was a linear combination of the discrepancies between the actual
+values of a selection of macroeconomic indicators and their consensus
+estimates. He concluded that, for the first quarter of 2018, the
+negative growth shocks were stronger for Europe than for the US, and
+that the inflation dynamics had been diverging in these two regions.
+
+Linear models certainly have their merits, and should be the first
+class of models to try. \S\ref{sec:LinearModel} describes our linear
+model of market response to macroeconomic data release. In contrast to
+Goldman Sachs, we are focused on the market response immediately after
+the data release. Low frequency responses are left for later studies.
+
+\section{Models}
+Suppose all institutions share a common understanding of the
+implication of the new indicator data in terms of the eventual revision
+that should be caused to an index by a discrepancy between an
+estimate of the indicator and its actual published value. In precise
+terms, this common understanding is captured by a function
+\[
+  f: (x, y) \in (0, \infty) \times (0, \infty) \to \reals
+\]
+which takes the new indicator value as its first argument and a
+pre-publication estimate as its second, and gives the
+percentage change of the index in the hypothetical scenario
+where only one institution advises the market.
+
+In the rest of this report, {\bf we assume all indicators have
+  positive values}. This is true for retail sales, for
+example. However, the actual numbers reported may not be the indicator
+values themselves but rather a month-on-month percentage
+change. Recovering the original indicator values from these
+percentages is of course a trivial operation.
+
+% For convenience, we shall
+% use $\tilde x$ to denote the actual published value of the indicator.
+We first consider the case when the new indicator value comes
+exactly as it is expected. In this case, there is no shock to the market and the
+index should not be affected. So we expect $f(x, x) = 0$ for all
+$x \in (0, \infty)$.
+
+Now suppose the market is advised by $K$ institutions, and on day $d$,
+when the indicator data are published, they estimate the new indicator
+value to be $\{x_{i,d}\}$, $i=1, \dots, K; d=1,2,\dots$.
+Let $Y_{d,t}$ with $t \in [0, \infty)$ denote the percentage change of
+the index caused by the data publication at time $t$ with respect to its value
+immediately before the publication at $t = 0$. As the new indicator
+data are released, the market assesses their implications and moves the
+index in so doing. Eventually, the market settles down and the
+percentage change of the index fluctuates around a value
+$\mu_d = \lim_{t\to \infty} \E Y_{d, t}$. Once $\mu_d$ has been
+determined, it is very natural to model $Y_{d,t}$, for a given $d$ as
+an Ornstein-Uhlenbeck process, i.e. 
+\begin{equation}
+  \label{eq:OU_response}
+  d Y_{d,t} = -\theta (Y_{d,t} - \mu_d) dt + \sigma dW_{d,t}
+\end{equation}
+where $W_{d,t}$ is a Wiener process for each $d$.
+$\theta, \sigma > 0$. Obviously, different markets differ in size and
+liquidity, hence $\theta$ and $\sigma$ change from one index to
+another. This is illustrated in figure \ref{fig:OU_response}.
+\begin{figure}[htb!]
+  \centering
+  \includegraphics[width=\linewidth]{IndexFluctuation.png}
+  \caption{Index response to data publication}
+  \label{fig:OU_response}
+\end{figure}
+In the next few sections, we explore some models of $\mu_d$, the
+eventual index level.
+
+\subsection{A Linear model for the eventual index level}
+\label{sec:LinearModel}
+The simpliest model for $\mu_d$ is to assume a linear relation:
+\begin{eqnarray}
+  \label{eq:mu}
+  \mu_d &=& b \sum_{j=1}^K a_j f(\tilde x_d, x_{j, d})
+          = b \sum_{j=1}^K a_j \frac{\tilde x_d - x_{j,d}}{x_{j, d}}
+          \label{eq:linmdl}
+\end{eqnarray}
+where
+\begin{itemize}
+  \item $\tilde x_d > 0$ is the value of the indicator published on
+    day $d$,
+  \item $x_{j, d} > 0$ is the $j$-th insitution's estimate of the
+    indicator on day $d$,
+\item $b > 0$ and $a_i \in \reals$ are parameters to be fitted to data.
+\end{itemize}
+By choosing $f(\tilde x, x) = (\tilde x - x)/x$, we model the shock to
+the market as being proportional to the percentage difference between
+the actual and the forecast value of the indicator.
+
+The parameter $b$ captures the
+importance of the indicator; the absolute value of $a_j$ characterises
+the importance of the $j$-th institution, i.e. how much appreciation
+it receives from the market; and the sign of $a_j$ reflects the
+concordant/discordant nature of the indicator - for this reason, we
+constrain the model so that all $\{a_j\}$ have the same sign - when
+this sign is positive/negative, the indicator is concordant/discordant to
+the market. For example, in the case of retail sales, we expect all
+$\{a_j\}$ to be positive: If the actual value is higher/lower than the
+concensus forecast, the market is expected to move up/down.
+
+To determine the parameters $b$ and $\{a_j\}$, we can use linear
+regression methods. While the value of $\mu_d$ is not
+observable, it should be sufficient to approximate it with the average
+value of the index when a sufficiently long time has passed since the
+data publication, say 1 hour  - in the age of the Internet and
+computerised trading, information penetrates the market swiftly. In an
+hour or so, the immediate impact of the data publication should have
+been priced in.
+
+When estimating the coefficients $\{b a_j\}$, it may be beneficial to
+use a shrinkage method instead of the ordinary least square error
+estimation. The Ridge regression comes handy for this
+reason. Formally, we find the parameters $c_j \overset{def.}{=} b a_j$
+by minimizing the function
+\[
+  G =
+  \sum_{d=1}^N
+  \left(\mu_d - \sum_{j=1}^K c_j {\tilde x_{j, d} - x_{j, d} \over x_{j,d}}\right)^2
+  + \lambda \sum_{j=1}^K c_j^2
+\]
+subject to the constraint
+\[
+  c_j \geq 0 \quad \forall j = 1,2,\dots,K
+\]
+if the indicator is concordant with the index, or
+\[
+  c_j \leq 0 \quad \forall j = 1,2,\dots,K
+\]
+if the indicator is discordant with the index. $\lambda$ is a
+tunning parameter that we will choose by cross validation.
+
+\subsection{A Neural Network model for the eventual index level}
+\label{sec:NNModel}
+A more flexible alternative to the linear model outlined in section
+\ref{sec:LinearModel} is to use a {\it Neural Network}:
+\begin{eqnarray*}
+  Z_{i, d} &=& \varsigma\left(\alpha_{i,0} +
+               \sum_{j=1}^K \alpha_{i,j}
+               {\tilde x_d - x_{j, d}\over x_{j, d}}
+               \right)
+               \quad i=1,2,\dots, K\\
+  \mu_d &=& \beta_0 + \sum_{i=1}^K \beta_i Z_{i, d}
+\end{eqnarray*}
+where $\varsigma$ is the sigmoid function
+\[
+  \varsigma(x) = \frac{1}{1 + e^{-x}}
+\]
+while $\{\alpha_{i,j}\}$ and $\{\beta_i\}$ are real constants - the
+so-called weights that will be fitted to data. The variables $\{Z_{i, d}\}$
+constitute a hidden layer of the neural network. When the weights
+$\{\alpha_{i,j}\}$ are near 0, the model is very similar to the
+linear model; as the weights become larger, the model differs further
+from linearity.
+
+\subsection{A distributional model for the eventual index level}
+\label{sec:DistributionalModel}
+The linear regression model and the neural network model introduced in
+\S\ref{sec:LinearModel} and \S\ref{sec:NNModel} both require a
+constant list of institutions to provide predictions so that the
+models can be fitted. This, however, may not always be the case, since
+the predictions come from a questionaire compiled by Bloomberg and the
+institutions enquired may choose not to provide a prediction. Thus we
+would like to have a distributional model for the eventual index level
+$\mu_d$ (see \eqref{eq:OU_response}), and aim to infer its value from
+the distributional properties of the predictions, regardless of the
+institutions behind those predictions. We propose
+\begin{eqnarray}
+  Z_d &=& \varsigma\left[
+        \alpha_0 + \alpha_1 \log{f_d(\bar w_d) \over f_d(\tilde w_d)}
+        \right],
+        \label{eq:thtwrh}\\
+  \mu_d &=& \beta_1 (\tilde w_d - \bar w_d) Z_d
+        \label{eq:90jtg}.
+\end{eqnarray}
+The notations are explained below:
+\begin{itemize}
+\item $\varsigma$ is the sigmoid function
+  $\varsigma(x) = {1 \over 1 + \exp(-x)}$.
+\item $w_{i, d}$ is the percentage change estimated by the $i$-th
+  institution for the $d$-th day:
+  \[
+    w_{i, d} = {x_{i,d} - \tilde x_{i, d-1} \over \tilde x_{d-1}}
+    \quad x_{i,d}, \tilde x_{i,d} > 0 \text{ for all } i, d;
+  \]
+\item $f_d$ is the distribution density function of $\{w_{i,d}\}$, which
+  we will estimate from the empirical distribution function.
+\item $\tilde w_d$ is the percentage change reported on the $d$-th
+    day:
+    \[
+    \tilde w_d = {\tilde x_d - \tilde x_{d-1} \over \tilde x_{d-1}};
+  \]
+\item $\bar w_d$ is the average estimate of the percentage change
+  \[
+    \bar w_d = {1 \over M} \sum_{i=1}^M w_{i, d};
+  \]
+\item $\alpha_0 \in \reals, \alpha_1 > 0$; $\beta_1$ is
+  positive/negative if the indicator is concordant/discordant with the
+  index.
+\end{itemize}
+Note that $0 < Z_d < 1$ is decreasing with $f_d(\tilde x)$ - the less
+likely an obervation, the more information it carries, and hence the
+larger the market response. Characteristics of the predictions'
+distribution, such as skewness and heavy tails, affect the market
+response via $Z_d$ and the distribution density function $f_d$.
+Nevertheless, $Z_d$ is indifferent to the concordant or discordant
+nature of the indicator, but is merely concerned about the magnitude
+of the reponse, which is dependent on the rareity or extent of surprise
+of the published indicator value.
+
+This model also allows us to get an idea of the potential market
+impact of the new indicator value even before its publication. In this
+case we can build a time series model
+\begin{equation}
+  \label{eq:rthth}
+  \tilde w_d = g(\tilde w_{t-N}, \dots, \tilde w_{t-1}) + \epsilon_d,
+\end{equation}
+and compute $\E \mu_d$. Here $g$ is a deterministic function that
+gives the expected value of $\tilde w_d$ based on its historical
+observations $\{\tilde w_i\}, i=t-N, \dots, t-1$; $\{\epsilon_d\}$ is
+a sequence of zero-mean, independent identically distributed random
+variables, whose distribution function will be determined from
+$\{\tilde w_i\}$. Using \eqref{eq:thtwrh}, \eqref{eq:90jtg} and
+\eqref{eq:rthth}, $\E \mu_d$ can be computed.
+
+% In the case of month-on-month percentage changes of UK retail sales, we
+% expect an ARIMA model to serve the purpose. We discuss this in more
+% details in \S\ref{sec:retail_sales}.
+
+\subsubsection{Estimation of the distribution density function}
+Classical time series models (see Brockwell and Davis
+\cite{Brockwell1991}) assume normally 
+distributed innovations. It is reasonable to assume that the
+institutions providing estimates use such models and the estimates
+they provide are the mean values of a family of normal distribtions.
+
+As a result, the set of estimates used in this study would be a
+normal mean-variance mixture, i.e. we model the set
+$\{w_{i,d}\}$, for $i=1,2,\dots, K$ and a given $d$ as samples drawn from
+a distribution with distribution function $G$. Let random variable $X$
+be distributed according to $G$: $\P(X \leq u) = G(u)$. We model $X$
+as the following construction:
+\begin{equation}
+  \label{eq:rghh6}
+  X = m + \gamma W + \sqrt{W} \vec A' \vec U  
+\end{equation}
+where
+\begin{itemize}
+\item $\vec A \in \reals^{k}$ is a $k$-dimensional real vector, and
+  $\vec A'$ denotes the transpose of $\vec A$.
+\item $\vec U \sim N(0, \vec I_k)$ is a vector of $k$ iid., zero-mean,
+  unit variance normal random variables.
+\item $W \sim N^{-}(\lambda, \chi, \psi)$ is a random variable with
+  {\it Generalized Inverse Gaussian} (GIG) distribution. $W$ is
+  termed the mixing variable.
+\end{itemize}
+This construction gives a {\it Generalized Hyperbolic} (GH)
+distribution. We denote it as
+GH$(\lambda, \chi, \psi, m, \vec A' \vec A, \gamma)$. 
+With appropriate parameter settings, the GH distribution captures such
+properties as heavy tails and skewness. The meanings of the parameters
+are as follows:
+\begin{itemize}
+\item $\lambda, \chi, \psi$ relate to the shape of the
+  distribution. They determine how much weight is assigned to the tail
+  and to the central part.
+\item $m$ sets the location.
+\item $\vec{A'A}$ determines the dispersion.
+\item $\gamma$ determines the skewness. When $\gamma = 0$, the
+  distribution is symmetric around $m$.
+\end{itemize}
+When $W$ is fixed, the distribution reduces to a normal distribution:
+\[
+  X|W = w \sim N(m + w \gamma, w \vec{A' A})
+\]
+
+The probability density function of the GH distribution involves a
+Modified Bessel function of the 2nd kind:
+\begin{equation}
+  \label{eq:trhytj54}
+  {d \over dx} \P(X \leq x) =
+  {
+    (\gamma / \delta)^\lambda
+    \over
+    \sqrt{2\pi} K_{\lambda}(\delta \gamma)
+  } e^{\beta (x - m)}
+  {
+    \alpha^{1/2 - \lambda}
+    K_{\lambda - 1/2}(\alpha \sqrt{\delta^2 + (x - m)^2})
+    \over
+    (\sqrt{\delta^2 + (x - m)^2})^{1/2 - \lambda}
+  }
+\end{equation}
+where $\alpha, \beta, \delta, m, \lambda$ are real parameters and
+constitute another parametrization scheme that helps fitting the
+distribution. $\gamma$ is a convenience variable defined as
+$\sqrt{\alpha^2 - \beta^2}$. We note $\alpha, \beta, \delta > 0$ and
+$\alpha > \beta$.
+
+The {\it fBasics} package in the {\it R} language provides functions for
+calculating the density and sampling from the distribution. However,
+its data fitting function performs rather poorly. We implement a data
+fitting algorithm using {\it Maximum Likelihood Estimate} (MLE). The
+COBYLA algorithm provides gradient-free optimization with inequality
+constraints, and hence is our choice for the purpose of MLE. It is
+available to R programs through the {\it nloptr} package. We have
+verified its performance.
+
+In simpler cases, other distributions may be more appropriate. If the
+data are symmetric and light-tailed, a normal distribution may well
+capture all the essential features; if the data are symmetric but are
+indeed heavy-tailed, a Student's t distribution might fit well. These
+distributions have fewer parameters and should be preferred. We also
+note that these distributions are special cases of the GH distribution.
+
+Yet another alternative is to infer $f$ from the empirical
+distribution by kernel smoothing. This approach will be preferred when
+the data have a small variance and the published indicator value falls
+in the central part of the data.
+
+% A potentially difficult issue of the model \eqref{eq:thtwrh} and
+% \eqref{eq:90jtg} is the estimation of the distribution density
+% function $f$. This distribution may be considerablly skewed and
+% heavy-tailed, while the number of data points, i.e. number of
+% institutions that provide estimates, is limited to 20 or so.
+
+
+% If $\min_{i} w_{i,d} \leq \tilde w_d \leq \max_{i} w_{i,d}$,
+% classical methods of interpolation and kernel smoothing can be
+% applied. If, however $\tilde w_{d}$ is smaller or larger than all the
+% estimates, we must consider the tail properties of the distribution of
+% $\{w_{i,d}\}$.
+
+% If the distribution of $\{w_{i,d}\}$ has light tails, it should suffice to
+% model it as a normal distribution;
+
+
+\subsubsection{Verification by simulation}
+To verify that our software procedures are capable of inferring the
+model parameters, we test them by simulated data. Specifically, we
+simulate the published indicator values and their estimated
+counterparts as iid. samples drawn from a GH distribution. Then we
+simulate the market's response according to \eqref{eq:thtwrh} and
+\eqref{eq:90jtg}.
+
+To see how well we can infer the parameter values, we first fit each
+set of simulated estimates, say those of index $d$, to a GH
+distribution, using the standard set of parameters as the initial ones
+- namely 1, 0, 1, 0, -1/2 for $\alpha_d$, $\beta_d$, $\delta_d$, $m_d$ and
+$\lambda_d$; now that we have obtained an estimation of the density
+function $f_d$, we use it to compute the term
+$\log{f_d(\bar w_d) \over f_d(\tilde w_d)}$. Then we are left with
+infering the parameters $\alpha_0$, $\alpha_1$ and
+$\beta_1$. This is done by minimizing the total square error:
+\[
+  \sum_d \left[
+    \mu_d - \beta_1  (\tilde w_d - \bar w_d)
+    \varsigma\left(
+      \alpha_0 + \alpha_1 \log{f_d(\bar w_d) \over f_d(\tilde w_d)}
+    \right)
+  \right]
+\]
+Finally we compare the values of $\alpha_0$, $\alpha_1$ and
+$\beta_1$ that result from the above minimization with their original
+settings. By iterating this procedure several times, we obtain
+a sequence of estimated values and real values. The distribution of
+their percentage differences is a measure of the quality of our data
+fitting precedures.
+
+\section{Impact of UK Retail sales data}
+\label{sec:retail_sales}
+% \subsection{}
+% Fitting the historical economists' estimates of UK retail sales and
+% the corresponding values of GBPUSD exchange rates to the model of
+% \eqref{eq:thtwrh} and \eqref{eq:90jtg}, we obain the 4 parameters
+% $\alpha_0, alpha_1$, $\beta_0, \beta_1$. When we deal with a new set
+% of estimates, we first infer its distribution density function $f$ and
+% then use \eqref{eq:thtwrh} and \eqref{eq:90jtg} to forecast the
+% response of the GBPUSD rates. 
+Before the release of UK retail sales data on 15 November, 2018, a
+total of 18 estimates have been compiled by Bloomberg. Figure
+\ref{fig:56ub7uj} shows their distribution.
+\begin{figure}[htb!]
+  \centering
+  \includegraphics[width=0.6\linewidth]{UK_Retail_Sales_Estimates.png}
+  \caption{Economists' estimates of month-on-month percentage change
+    of UK retail sales including fuel. Horizontal axis: labels of the
+    economists. Vertical axis: the economist's estimate of UK retail sales.}
+  \label{fig:56ub7uj}
+\end{figure}
+Apparently, except for the two points at -1\%, which are very much
+at odd with the rest, the economists are generally rather optimistic
+about UK retail sales in October, with the average estimate dwelling
+at 0.2\%. As revealed in figure \ref{fig:45gt5yh}, this optimism is
+supported by the negative correlation observed in historical UK retail
+sales and the large negative swing of -0.8\% of September. The reader
+is referred to \S\ref{sec:rg45yv67} for the details of this analysis.
+
+
+We exclude the two estimates of -1\% from the dataset before further
+considerations. After the exclusion, the dataset looks consistent with
+a normal distribution. In fact, the Shapiro-Wilks test performed on
+the dataset gives a p-value of 0.93 - hence one cannot reject the null
+hypothesis that the dataset is normally distributed.
+
+From 15th February, 2013 up to the last data release in 18th October,
+2018, there are 69 data publications and an equal number of sets of
+economists' estimates. To use the distributional model described in
+\S\ref{sec:DistributionalModel} to assess the rise or fall of an
+index, such as the GBP/USD rate, in response to the publication of UK
+retail sales data, we need to fit the distribution of each set of
+economists' estimates.
+
+For this purpose, we run the Shapiro-Wilks test to each set of
+estimates, and, if the resulting p-value is smaller than 0.05, we fit
+the estimates to a Generalized Hypobolic distribution; otherwise, we
+fit them to a normal distribution.
+
+To calibrate \eqref{eq:thtwrh} and \eqref{eq:90jtg} of the
+distributional model, we also need the percentage change of the index
+in response to historical data publications, namely $\{Z_d\}$. While
+this quantity is not measurable, the percentage change of the index 30
+minutes after the data release should be sufficiently close to
+it. This is the approximation we will adopt.
+
+\subsection{GBP/USD rates}
+\label{sec:gbpusd}
+Figure \ref{fig:9vrth} plots the shock to the market versus the
+percentage change of the GBP/USD rate 30 minutes after the data
+release. Clearly, a weak positive correlation exists between the shock
+and the percentage change of the GBP/USD rate. In fact, a careful
+calculation estimates the Pearson correlation coefficient between the
+two to be 0.48. This implies the $\beta_1$ parameter of the
+distributional model of \S\ref{sec:DistributionalModel} must be
+positive.
+\begin{figure}[htb!]
+  \centering
+  \includegraphics[width=0.6\linewidth]{GBPUSD-Retail.pdf}
+  \caption{GBPUSD response to UK retail sales. The shock is measured
+    by the difference between the actual reported value and the
+    average estimate. The response is measured by the percentage
+    change of the GBPUSD rate 30min after the data release.}
+  \label{fig:9vrth}
+\end{figure}
+To fit the parameters of the model, we use a
+procedure of minimizing the sum of square errors:
+\begin{equation}
+  \label{eq:b6yu7}
+  (\hat \alpha_0, \hat \alpha_1, \hat \beta_1)
+  = \argmin_{\alpha_0, \alpha_1, \beta_1}
+  \sum_d \left[
+    \mu_d - \beta_1  (\tilde w_d - \bar w_d)
+    \varsigma\left(
+      \alpha_0 + \alpha_1 \log{f_d(\bar w_d) \over f_d(\tilde w_d)}
+    \right)
+  \right]
+\end{equation}
+This is the same procedure that we use with simulated data. It should
+be noted that, when the fitted value of $\alpha_1$ is very close to 0,
+the distributional model of \eqref{eq:thtwrh} and \eqref{eq:90jtg}
+reduces to a linear regression - we are in no danger of presuming
+non-linear responses. In this special case, we will skip the
+sophistication of \eqref{eq:thtwrh} and \eqref{eq:90jtg}, and fit a
+linear regression instead:
+\begin{equation}
+  \label{eq:65tb7uk}
+  \mu_d = \beta_1 (\tilde w_d - \bar w_d)  
+\end{equation}
+The minimisation problem of \eqref{eq:b6yu7} is solved using the R
+package {\it nloptr}. We employ the following algorithms implemented
+in the package:
+\begin{itemize}
+\item {\it COBYLA} (Constrained Optimization by Linear
+  Approximations)
+\item {\it DIRECT} (Dividing Rectangles Algorithm for Global
+  Optimization)
+  \item {\it CRS2LM} (Controlled Random Search variant 2 with the
+    ``local mutation'' modification.
+  \item {\it BOBYQA} (Bound Optimization by Quadratic Approximation)
+  \item {\it ISRES} (Improved Stochastic Ranking Evolution Strategy)
+\end{itemize}
+With 3 parameters to fit, these algorithms are computationally
+expensive, so we have to focus on particular subsets of the
+configuration space
+$\reals \times \reals_+ \times \reals \times \reals_+$.
+We argue that the following constraints should be imposed while
+carrying out the minimisation of \eqref{eq:b6yu7}:
+\begin{itemize}
+\item Since a very small value of $\alpha_1$ indicates a reduction to
+  linear regression, we impose
+  $\alpha_1 \geq 1.0 \times 10^{-3}$. This artificial lower bound
+  serves no other purpose than to tell us that, upon the bound being hit,
+  a linear regression is more suitable .
+
+\item Figure \ref{fig:9vrth} is not showing a clear deviation from
+  linearity, hence it is reasonable to believe that such deviations, if
+  existent, should be a perturbative rather than a dominent effect, when
+  compared with a linear response. This suggests limiting the parameter
+  $\alpha_0$ to near-zero values. We set $-3 \leq \alpha_0 \leq 3$.
+\item We prefer parameter sets with a small sum of squares, i.e. we
+  modify \eqref{eq:b6yu7} to
+  \begin{eqnarray}
+    && (\hat \alpha_0, \hat \alpha_1, \hat \beta_1)
+       \label{eq:b6yu8} \\
+    &=&
+        \argmin_{\alpha_0, \alpha_1, \beta_1}
+        \left\{
+        \sum_d \left[
+        \mu_d - \beta_1  (\tilde w_d - \bar w_d)
+        \varsigma\left(
+        \alpha_0 + \alpha_1 \log{f_d(\bar w_d) \over f_d(\tilde w_d)}
+        \right)
+        \right]
+        \right\}
+        (1 + \alpha_0^2  + \alpha_1^2 + \beta_1^2)
+        \nonumber
+  \end{eqnarray}
+  The form of the penalty term of \eqref{eq:b6yu8} is inspired by that
+  of Ridge regression, but is added in a multiplicative fashion such
+  that the tuning parameter normally associated with a shrinkage method
+  such as ridge regression is no longer needed.
+\end{itemize}
+
+Using the procedure described above, all the five algorithms converged
+and produced very similar minimising parameters. We tabulate the
+results in table \ref{tab:gbpusd}.
+\begin{table}[htb!]
+  \centering
+  \begin{tabular}{c|c|c|c}
+    Algorithm & $\alpha_0$ & $\alpha_1$ & $\beta_1$ \\
+    \hline
+    COBYLA & $1.21 \times 10^{-2}$ & $1.79 \times 10^{-2}$ & $1.59 \times 10^{-1}$ \\
+    DIRECT & $1.21 \times 10^{-2}$ & $1.79 \times 10^{-2}$ & $1.59 \times 10^{-1}$ \\
+    CRS2LM & $1.45 \times 10^{-2}$ & $0$ & $1.71 \times 10^{-1}$ \\
+    BOBYQA & $1.21 \times 10^{-2}$ & $1.79 \times 10^{-2}$ & $1.59 \times 10^{-1}$ \\
+    ISRES & $1.23 \times 10^{-2}$ & $1.80 \times 10^{-2}$ & $1.59 \times 10^{-1}$ \\
+    \hline
+  \end{tabular}
+  \caption{Parameters of the Distributional model fitted to GBP/USD
+    rates}
+  \label{tab:gbpusd}
+\end{table}
+Fitting the same data set to the linear regression model
+\eqref{eq:65tb7uk} gives the regression coefficient $\beta_1 = 0.102$.
+
+To compare the prediction accuracy of the distributional model with
+that of the linear regression model, we use the first 80\% of the data
+(55 observations) for model fitting and the remaining 20\% for
+back-testing. Table \ref{tab:t56y67} lists the metrics of the forecast
+errors of the two models.
+\begin{table}[htb!]
+  \centering
+  \begin{tabular}{c|c|c|c|c}
+    model & mean & std. dev. & mean sqr. \\
+    \hline
+    linear reg. & $-4.89 \times 10^{-8}$ & $8.92 \times 10^{-4}$ & $7.35 \times 10^{-7}$ \\
+    distributional & $-1.90 \times 10^{-5}$ & $9.41 \times 10^{-4}$ & $8.18 \times 10^{-7}$ \\
+    \hline
+  \end{tabular}
+  \caption{Metrics of forecast errors of GBPUSD exchange rate
+    percentage change in response to UK retail sales data 
+    release}
+  \label{tab:t56y67}
+\end{table}
+Clearly, the linear regression model is a better fit.
+
+
+% Having fitted the model parameters, we are able to compute the
+% anticipated percentage changes of the GBP/USD rates in response to the
+% release of UK retail sales data. Subtracting the anticipated values
+% from the actual values gives us the residuals of the model.
+
+% If the model \eqref{eq:65tb7uk} accounts for most of the variations in
+% $\mu_d$, we expect the residuals of the model to be normally
+% distributed. This is indeed the case. A shapiro-wilks test on the
+% residuals gives a p-value of 0.18, suggesting the assumed normality of
+% the residuals cannot be rejected.
+
+% Having fitted the model parameters, we are well poised to assess the
+% response of the GBP/USD rate to newly reported data of UK retail sales.
+% Nevertheless, as mentioned earlier, we would also like to assess the
+% market response even before a data release, by predicting the data
+% due. At the absence of additional explanatory data, we use a
+% univariate time series model for this purpose. This is is detailed in
+% \S\ref{sec:rg45yv67}. For the month-on-month percentage change of UK
+% retail sales including auto fuel, {\bf we have obtained an expected
+%   value of 0.71\% and a standard error of 0.83\%}, which lead us to
+% believe that the {\bf GBP/USD rate will change by 1.65 ($\pm$ 1.36)bp}
+% when the data is released.
+
+\subsection{FTSE100 Index}
+\label{sec:j4g53hg}
+Following the same procedure as outlined in \S\ref{sec:gbpusd}, we
+build a distributional model of \S\ref{sec:DistributionalModel} to
+forecast the percentage change of the FTSE100 index in response to the
+release of new retail sales data, using the historical values of the
+index at 9:30AM and 10:00AM on each of those days in the past 10
+months on which the retail sales were published. The fitted model
+parameters are listed table \ref{tab:f54y6h}:
+\begin{table}[htb!]
+  \centering
+  \begin{tabular}{c|c|c|c}
+    algorithm & $\alpha_0$ & $\alpha_1$ & $\beta_1$ \\
+    \hline
+    COBYLA & $8.49 \times 10^{-4}$ & $2.08 \times 10^{-2}$ & $4.63 \times 10^{-2}$ \\
+    DIRECT & $9.14 \times 10^{-4}$ & $2.09 \times 10^{-2}$ & $4.63 \times 10^{-2}$ \\
+    CRS2LM & $8.51 \times 10^{-4}$ & $2.08 \times 10^{-2}$ & $4.63 \times 10^{-2}$ \\
+    BOBYQA & $8.51 \times 10^{-4}$ & $2.08 \times 10^{-2}$ & $4.63 \times 10^{-2}$ \\
+    ISRES & $1.03 \times 10^{-3}$ & $2.06 \times 10^{-2}$ & $4.63 \times 10^{-2}$ \\
+    \hline
+  \end{tabular}
+  \caption{Parameters of the Distributional model fitted to the
+    FTSE100 index}
+  \label{tab:f54y6h}
+\end{table}
+In particular, the algorithms COBYLA, CRS2LM and BOBYQA converged with
+a sufficiently small stepsize and therefore are the most reliable. We
+see that their parameter estimates are very similar too. We take the
+results of BOBYQA for further investigation.
+
+Comparing the parameter values fitted for GBP/USD rates (table
+\ref{tab:gbpusd}), FTSE100 (table \ref{tab:f54y6h}) and 2-year GBP
+swap rates (table \ref{tab:f45t5}), it appears that the extent of
+non-linearity in the market response is negatively correlated to the
+liquidity of the asset - the more liquid is the asset, the more linear
+is its market's response to the release of new data.
+
+Using the forecast results from \S\ref{sec:rg45yv67}, we anticipate
+the FTSE100 index to change by 1.55bp ($\pm$ 2.00bp), should the
+retail sales change by 0.71\% ($\pm$ 0.83\%) as predicted.
+
+\subsection{UK interest rate swaps}
+In this section we explore the response of UK interest swaps to the
+release of UK retail sales data. In \S\ref{sec:9j44g} we use the
+percentage change of the swap rate at 11AM with respect to the
+rate at market open as an approximation to the market response. In
+\S\ref{sec:9jfg4g} we use the percentage change of the swap rate at
+10:00 with respect to the rate at 09:30 to approximate the market
+response.
+
+% From the fitted parameter values, we see that the 9:30-10:00 response
+% is markedly more non-linear than the open-close response. Since the
+% retail sales data are public and expected to penetrate the market
+% quickly, we believe the 9:30-10:00 estimation is more reliable.
+
+\subsubsection{Market response approximated by  open-11AM rates}
+\label{sec:9j44g}
+In contrast to the strong correlation of 0.48 between retail
+sales shocks and the GBP/USD exchange rates, the correlation between
+retail sales shocks and the open-11AM percentage change of UK
+interest rate swaps is considerablly weaker. From the data of the most
+recent 67 months, we estimate the Pearson correlation coefficient to
+be 0.29 for 2-year GBP interest rate swaps. Figure \ref{fig:hb5rth5}
+shows the historical values of the percentage change of 2-year and
+5-year interest rate swaps from 9AM to 11AM on the days when retail
+sales data were announced, and the discrepancy between the actually
+announced value and the average economists' estimate.
+\begin{figure}[htb!]
+  \centering
+  \begin{subfigure}[t]{0.15\textwidth}
+    \includegraphics[width=\textwidth]{vfh56.pdf}
+    \caption{2-year GBP interest rate swap}
+    \label{fig:vfh56}
+  \end{subfigure}
+  \begin{subfigure}[t]{0.85\textwidth}
+    \includegraphics[width=\textwidth]{h6u67j.pdf}
+    \caption{5-year GBP interest rate swap}
+    \label{fig:h6u67j}
+  \end{subfigure}
+  \caption{GBP interest rate swaps}
+  \label{fig:hb5rth5}
+\end{figure}
+
+Following the same procedure as detailed in \S\ref{sec:gbpusd}, we
+obtain the paramter values in table \ref{tab:g546u7} for
+2-year UK swap rates:
+\begin{table}[htb!]
+  \centering
+  % \begin{tabular}{c|c|c|c|c}
+  %   algorithm & $\alpha_0$ & $\alpha_1$ & $\beta_0$ & $\beta_1$ \\
+  %   \hline
+  %   COBYLA & $2.86\times 10^{-4}$ & $1.56\times 10^{-3}$ & $1.00\times 10^{-3}$ & $2.40\times 10^{-2}$ \\
+  %   DIRECT & $3.05\times 10^{-4}$ & $1.46\times 10^{-3}$ & $1.00\times 10^{-3}$ & $2.41\times 10^{-2}$ \\
+  %   CRS2LM & $2.87\times 10^{-4}$ & $1.55\times 10^{-3}$ & $1.00\times 10^{-3}$ & $2.40\times 10^{-2}$ \\
+  %   BOBYQA & $2.87\times 10^{-4}$ & $1.55\times 10^{-3}$ & $1.00\times 10^{-3}$ & $2.40\times 10^{-2}$ \\
+  %   ISRES & $3.13\times 10^{-4}$ & $3.46\times 10^{-3}$ & $9.96\times 10^{-4}$ & $2.38\times 10^{-2}$ \\
+  %   \hline
+  % \end{tabular}
+  \begin{tabular}{c|c|c|c}
+    Algorithm & $\alpha_0$ & $\alpha_1$ & $\beta_1$ \\
+    \hline
+    COBYLA & $1.35 \times 10^{-3}$ & $1.26 \times 10^{-2}$ & $5.37 \times 10^{-2}$ \\
+    DIRECT & $1.35 \times 10^{-3}$ & $1.26 \times 10^{-2}$ & $5.37 \times 10^{-2}$ \\
+    CRS2LM & $1.35 \times 10^{-3}$ & $1.26 \times 10^{-2}$ & $5.37 \times 10^{-2}$ \\
+    BOBYQA & $1.35 \times 10^{-3}$ & $1.26 \times 10^{-2}$ & $5.37 \times 10^{-2}$ \\
+    ISRES & $1.34 \times 10^{-3}$ & $1.25 \times 10^{-2}$ & $5.36 \times 10^{-2}$ \\
+    \hline
+  \end{tabular}
+  \caption{Model parameters of 2-year GBP interest rate swap
+    responding to retail sales data release}
+  \label{tab:g546u7}
+\end{table}
+If we instead employ a model of linear regression, the regression
+coefficient is found to be $\beta_1 = 0.797$ by minimising the
+total square error.
+
+Using the forecast result from \S\ref{sec:rg45yv67}, we anticipate the
+2-year swap rate to change by 64.0bp ($\pm$ 68.9bp).
+As for 5-year interest swaps, we estimate the Pearson correlation
+coefficient to be 0.19. Fitting the parameters of the distributional
+model gives the values listed in table \ref{tab:g536yu67}.
+\begin{table}[htb!]
+  \centering
+  % \begin{tabular}{c|c|c|c|c}
+  %   Algorithm & $\alpha_0$ & $\alpha_1$ & $\beta_0$ & $\beta_1$ \\
+  %   \hline
+  %   COBYLA & $9.75\times 10^{-5}$ & $5.80\times 10^{-4}$ & $2.74\times 10^{-3}$ & $1.39\times 10^{-2}$\\
+  %   DIRECT & $0.00$ & $4.57\times 10^{-4}$ & $2.74\times 10^{-3}$ & $1.39\times 10^{-2}$\\
+  %   CRS2LM & $9.64\times 10^{-5}$ & $5.80\times 10^{-4}$ & $2.74\times 10^{-3}$ & $1.39\times 10^{-2}$\\
+  %   BOBYQA & $9.64\times 10^{-5}$ & $5.80\times 10^{-4}$ & $2.74\times 10^{-3}$ & $1.39\times 10^{-2}$\\
+  %   ISRES & $-1.82\times 10^{-3}$ & $1.16\times 10^{-3}$ & $2.67\times 10^{-3}$ & $1.14\times 10^{-2}$\\
+  %   \hline
+  % \end{tabular}
+  \begin{tabular}{c|c|c|c}
+    Algorithm & $\alpha_0$ & $\alpha_1$ & $\beta_1$ \\
+    \hline
+    COBYLA & $3.03 \times 10^{-4}$ & $2.70 \times 10^{-3}$ & $2.47 \times 10^{-2}$ \\
+    DIRECT & $3.05 \times 10^{-4}$ & $2.69 \times 10^{-3}$ & $2.47 \times 10^{-2}$ \\
+    CRS2LM & $3.02 \times 10^{-4}$ & $2.70 \times 10^{-3}$ & $2.47 \times 10^{-2}$ \\
+    BOBYQA & $3.02 \times 10^{-4}$ & $2.70 \times 10^{-3}$ & $2.47 \times 10^{-2}$ \\
+    ISRES & $4.26 \times 10^{-4}$ & $2.73 \times 10^{-3}$ & $2.48 \times 10^{-2}$ \\
+    \hline
+  \end{tabular}
+  \caption{Model parameters of 5-year GBP interest rate swaps}
+  \label{tab:g536yu67}
+\end{table}
+If we resort to the linear model \eqref{eq:65tb7uk} instead, by minimising the
+square error, we find the regression coefficient to be $\beta_1 = 0.82$.
+
+Plugging in the prediction of the retail sales (see
+\S\ref{sec:rg45yv67}), we obtain a prediction of the percentage change
+of 5-year interest swaps in response to retail sale shocks: We think
+the fixed rate of the swap will increase by 55.1bp($\pm$ 53.4bp).
+
+The prediction accuracies of the distributional model
+\eqref{eq:thtwrh}, \eqref{eq:90jtg} and the linear regression model
+\eqref{eq:65tb7uk} are compared in table \ref{tab:j7j7j1}. The data
+set consists of 67 monthly observations, spanning from March 2013 to
+October 2018, on each and every day when the UK retail sales data were
+released. We use 80\% of the data (54 observations) for fitting the
+models and the rest of data for testng against model predictions.
+\begin{table}[htb!]
+  \centering
+  \begin{tabular}{c|c|c|c|c}
+    & model & mean & std. dev. & mean sqr. \\
+    \hline
+    \multirow{2}{*}{2Y} & linear reg. & $-11.7 \times 10^{-4}$ & $8.8 \times 10^{-3}$ & $0.72 \times 10^{-4}$ \\
+    & distributional & $-18.7 \times 10^{-4}$ & $10.7 \times 10^{-3}$ & $1.10 \times 10^{-4}$\\
+    \hline
+    \hline
+    \multirow{2}{*}{5Y} & linear reg. & $8.2 \times 10^{-4}$ & $9.1 \times 10^{-3}$ & $0.78 \times 10^{-4}$ \\
+    & distributional & $0.91 \times 10^{-4}$ & $11.1 \times 10^{-3}$ & $1.13 \times 10^{-4}$\\
+    \hline
+  \end{tabular}
+  \caption{Metrics of forecast errors of 2-year and 5-year GBP swap
+    rate percentage change in response to UK retail sales data
+    release}
+  \label{tab:j7j7j1}
+\end{table}
+While the two models have rather similar values for the standard
+deviation and the mean square of forecast errors, the distributional
+model has a bias that is nearly an order of magnitude smaller than
+that of the linear regression model. We consider the distributional
+model to be a better fit.
+
+\subsubsection{Market Response approximated by intraday rates}
+\label{sec:9jfg4g}
+Using 9:30-10:00 percentage change of the swap rate as an
+approximation of the market response we obtain significantly
+differenet models. In particular, the distributional model of
+\eqref{eq:thtwrh} and \eqref{eq:90jtg} differs considerably from
+linear regression, as is manifested in the sizable values of $\alpha_1$
+and $\beta_1$. For the 2-year interest rate swap
+``GBP Swap SA vs 6M 2Y'', the fitted parameter values are shown in
+table \ref{tab:f45t5}.
+\begin{table}[htb!]
+  \centering
+  \begin{tabular}{c|c|c|c|c}
+    Algorithm & $\alpha_0$ & $\alpha_1$ & $\beta_1$ \\
+    \hline
+    COBYLA & $2.07 \times 10^{-2}$ & $2.41 \times 10^{-2}$ & $2.06 \times 10^{-1}$ \\
+    DIRECT & $2.07 \times 10^{-2}$ & $2.41 \times 10^{-2}$ & $2.06 \times 10^{-1}$ \\
+    CRS2LM & $2.11 \times 10^{-2}$ & $0$ & $2.07 \times 10^{-1}$ \\
+    BOBYQA & $2.07 \times 10^{-2}$ & $2.41 \times 10^{-2}$ & $2.06 \times 10^{-1}$ \\
+    ISRES & $2.08 \times 10^{-2}$ & $2.41 \times 10^{-2}$ & $2.06 \times 10^{-1}$ \\
+    \hline
+  \end{tabular}
+  \caption{Model parameters of 2-year interest swaps with 9:30-10:00 responses}
+  \label{tab:f45t5}
+\end{table}
+Comparing the values in table \ref{tab:g536yu67} with those in table
+\ref{tab:f45t5}, we see that $\alpha_1$ and $\beta_1$ in the latter
+are an order of magnitude larger than their counterparts in the
+former, suggesting significantly more pronounced non-linearity in the
+9:30-10:00 response.
+
+Looking at the distribution of the economists' forecast of retail
+sales (month-on-month percentage change of quantity bought including
+auto fuel), we find a rather scewed distribution. To account for this
+asymmetry, we fit the forecast values to a {\it Generalized Hypobolic}
+(GH) distribution. Applying the distributional model of
+\eqref{eq:thtwrh} and \eqref{eq:90jtg}, and plugging in the forecast
+values from \S\ref{sec:rg45yv67}, we obtain a prediction of the
+swap rate's reponse to the released retail sales data - as of 10:00,
+30min after the publication of the data, we expect the rate to change
+by 7.08bp ($\pm$ 9.04bp).
+
+As for 5-year interest swaps, the correlation between the percentage
+change of the swap rates and the forecast discrepancy of retail sales
+seems too weak to support any prediction whatsoever. This is
+illustrated in figure \ref{fig:f5464f}, which plots the percentage
+change of the swap rate against the forecast discrepancy.
+\begin{figure}[htb!]
+  \centering
+  \includegraphics[width=0.8\linewidth]{f5464f.pdf}
+  \caption{Percentage change of 5-year GBP interest rate swap plotted
+    against forecast discrepancy}
+  \label{fig:f5464f}
+\end{figure}
+
+\subsection{A time series model for UK retail sales}
+\label{sec:rg45yv67}
+The historical values of the month-on-month changes of UK retail sales
+including fuel are plotted in figure \ref{fig:4g56hf}. This data set
+consists of 69 observations and comprises data from January 2013 to
+September 2018. We will use them to predict the datum of October 2018
+that was released on 15th November, 2018.
+\begin{figure}[htb!]
+  \centering
+  \begin{subfigure}[b]{0.45\textwidth}
+    \includegraphics[width=\textwidth]{UK_Retail.pdf}
+    \caption{retail sales}
+    \label{fig:4g56hf}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.45\textwidth}
+    \includegraphics[width=\textwidth]{UK_Retail_acf.pdf}
+    \caption{Autocorrelation function of retail sales}
+    \label{fig:45gt5yh}
+  \end{subfigure}
+  \caption{UK Retail Sales including auto fuel}
+  \label{dig:5g6yjh}
+\end{figure}
+From figure \ref{fig:45gt5yh}, one can see that a fairly strong
+negative correlation is present in the retail sales data, and the fact
+that a strong correlation is only observed at time lag 1, suggests a
+moving average model of order 1:
+\begin{equation}
+  \label{eq:oijng5h}
+  R_t = c + \theta \epsilon_{t-1} + \epsilon_{t}  
+\end{equation}
+where $R_t$ is the retail sales, $\{\epsilon_t\}$ are termed the
+innovations in the time series literature, and are a sequence of 
+independent, identically distributed, zero-mean normal random
+variables. $\theta$ and $c$ are constant parameters. Fitting
+the retail sales data to \eqref{eq:oijng5h} gives $\theta = -0.53$,
+$c = 2.8 \times 10^{-3}$ and $\var(\epsilon_t) = 6.8 \times 10^{-5}$.
+The large negative value of $\theta$ means that, if retail sales have
+reduced from month $n$ to month $n+1$, then they are rather likely to
+increase from month $n+1$ to month $n+2$, reflecting the consumer
+behavior of alternating between saving and spending - this is of
+course nothing but common sense - if spending is followed by even more
+spending, the consumer would be heading toward bankruptcy.
+
+Via a standard procedure, the innovation for September, 2018 was
+calculated to be -0.813\%. Plugging this number into
+\eqref{eq:oijng5h} then produces the estimate of
+$0.713\%(\pm 0.825\%)$ for October, 2018.
+In fact, an increment of 0.8\% was also predicted by the economist
+Samuel Tombs at Macroeconomics Ltd. However, the actual value reported
+was -0.5\%. Figure \ref{fig:vfrtg659} plots the proportion of
+under-estimates corresponding to each data release. We see that it is
+not uncommon to find a point on the bottom or the top line, meaning
+all the economists over- or under-estimate, respectively, reflecting
+the volatility of the month-on-month change of retail sales.
+\begin{figure}[htb!]
+  \centering
+  \includegraphics[width=0.6\linewidth]{EstimatesAndReported.pdf}
+  \caption{Estimated \& reported values. Each point on this picture
+    represents an occasion of data release. The horizontal coordinate
+    of a point is its order in the dataset. The latest release
+    corresponds to the 70th, i.e. the rightmost point. The vertical
+    coordinate of a point is the proportion of under-estimates
+    in the corresponding data release.
+  }
+  \label{fig:vfrtg659}
+\end{figure}
+
+A void is clearly manifested in the middle-right part of figure
+\ref{fig:vfrtg659}, which indicates that, after the 40th point i.e. 30
+months ago, April 2016, there hasn't been a single occasion when the
+actual reported datum is approximately the economists' median
+estimate. This coincidence with the UK Brexit referendum is probably
+not a coincidence after all.
+
+\subsection{Discussion}
+Comparing the percentage change of GBPUSD rate, 2-year GBP swap rate
+and 5-year swap rate, as shown in figure \ref{fig:vgfrh67}, one can see
+that the linear relation observed in the case of GBPUSD exchange rate is
+obscured for a 2-year GBP swap and even more so for a 5-year swap.
+\begin{figure}[htb!]
+  \centering
+  \begin{subfigure}[b]{0.32\textwidth}
+    \includegraphics[width=\textwidth]{GBPUSD-Retail.pdf}
+    \caption{GBPUSD exchange rate}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.32\textwidth}
+    \includegraphics[width=\textwidth]{vfh56.pdf}
+    \caption{2-year GBP interest rate swap}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.32\textwidth}
+    \includegraphics[width=\textwidth]{h6u67j.pdf}
+    \caption{5-year GBP interest rate swap}
+  \end{subfigure}
+  \caption{Market response to retail sales shocks}
+  \label{fig:vgfrh67}
+\end{figure}
+The distributional model of \S\ref{sec:DistributionalModel} takes into
+account not only the economists' average estimate but the whole
+spectrum of the estimates. Table \ref{tab:g56hy56} compares its
+performance with that of a linear regression. We see that in the case
+of a 5-year GBP interest rate swap, the bias of the distributional
+model is about 1/10 of that of the linear regression, whilst the
+standard deviation of the forecast errors of the former is about the
+same as that of the latter. Hence the distributional model is clearly
+a better fit.
+\begin{table}[htb!]
+  \centering
+  \begin{tabular}{c|c|c|c|c}
+    & model & mean & std. dev. & mean sqr. \\
+    \hline
+    \multirow{2}{*}{GBPUSD} & linear reg. & $-4.89 \times 10^{-8}$ & $8.92 \times 10^{-4}$ & $7.35 \times 10^{-7}$ \\
+    & distributional & $-1.90 \times 10^{-5}$ & $9.41 \times 10^{-4}$ & $8.18 \times 10^{-7}$ \\
+    \hline
+    \multirow{2}{*}{2Y swap} & linear reg. & $-11.7 \times 10^{-4}$ & $8.8 \times 10^{-3}$ & $0.72 \times 10^{-4}$ \\
+    & distributional & $-18.7 \times 10^{-4}$ & $10.7 \times 10^{-3}$ & $1.10 \times 10^{-4}$\\
+    \hline
+    \multirow{2}{*}{5Y swap} & linear reg. & $8.2 \times 10^{-4}$ & $9.1 \times 10^{-3}$ & $0.78 \times 10^{-4}$ \\
+    & distributional & $0.91 \times 10^{-4}$ & $11.1 \times 10^{-3}$ & $1.13 \times 10^{-4}$\\
+  \end{tabular}
+  \caption{Metrics of forecast errors of GBPUSD exchange rate
+    percentage change in response to UK retail sales data 
+    release}
+  \label{tab:g56hy56}
+\end{table}
+
+Figure \ref{fig:u4g56} shows the distribution of the economists'
+estimates before the retail sales data release on 15th October, 2018.
+In fact, the distribution can change quite significantly from one
+occasion to another, and differ in such characteristics as dispersion,
+skewness and kurtosis.
+
+Conceivably, when the distribution is spread out, meaning the
+economists are rather uncertain about what to expect from the data 
+publication, a large discrepancy of the published value from the
+average estimate should be less surprising than it would be in the
+case of a concentrated distribution of the economists' estimates. This
+motivates the adoption of the distributional model.
+\begin{figure}[htb!]
+  \centering
+  \includegraphics[width=0.7\linewidth]{UK_Retail_Sales_incl_fuel_MoM_cropped.png}
+  \caption{Distribution of economists' estimates}
+  \label{fig:u4g56}
+\end{figure}
+
+The greater degree of non-linearity in the response of the 5-year
+interest rate swap should, at least in part, be attributable to the
+lower liquidity of its market, when compared with the market of
+GBP/USD exchange or that of a 2-year GBP interest rate swap. One can
+imagine that, when the market is trading more slowly, its participants have
+more time to reckon the implications of the newly published data, and
+to interpret the data in relation to their prior anticipation, leading
+to the distributional aspects of the economists' estimates being more
+pronounced.
+
+\section{Forecast of UK Retail Sales}
+A possible approach to improve forecast accuracy of retail sales is to
+look into the individual sectors that make up the retail sales
+index, make forecast on each of them, and finally obtain the forecast
+of the overall index as a weighted average, using the weights
+specified by the {\it Office of National Statistics} (ONS). These
+weights are estimates of the total worth of each economic sector and
+are maintained by the ONS.
+
+When attempting to forecast the index of a particular sector, we may
+take into account the weather data, which are reported by the
+Meteorology office at the end of each month and prior to the release
+of retail sales data of the same month, which are usually due in the
+middle of the next month. The UK weather data include the minimum,
+mean, and maximum temperature of each month, the amount of rain,
+the number of sunny days, the number of days with more than 1mm of
+rain, and the number of days of airfrost.
+
+The most widely quoted number of UK retail sales is arguably the
+month-on-month percentage change of seasonally adjusted total
+retail. Instinctively, seasonally adjusted retail sales should no
+longer manifest a seasonal pattern, if the seasonal adjustment has
+been done correctly. Hence it is natural to expect a correlation, if
+any such exists, to be found between the unadjusted retail sales and
+the weather series. Once forecast of the unadjusted retail sales has
+been calculated, forecast of the seasonally adjusted value as well as
+the month-on-month percentage change can be obtained by applying
+seasonal adjustment. This is the approach we are going to take.
+
+The ONS reports unadjusted retail sales in 11 sectors, each of which
+is categorized into a group. Table \ref{tab:g5h6} shows the sectors,
+their grouping, and their assigned weights as of December 2018. It is
+obvious that the correlation between two sectors in the same group is
+much stronger than that between two sectors in different groups. For
+simplicity we shall ignore the correlation between different
+groups. When analysing a particular group, we apply principle
+component analysis and model the uncorrelated factors thereby obtained
+using univariate time series methods.
+\begin{table}[htb!]
+  \centering
+  \begin{tabular}{l|l|l}
+    sector & group & weight\\
+    \hline \hline
+    books, newspapers \& periodicals & books, newspapers \& periodicals & 3723\\
+    \hline
+    computer \& telecomms & computer \& telecomms & 5675\\
+    \hline
+    floor coverings & floor coverings & 1520\\
+    \hline
+    alcoholic drinks, other beverages \& tobacco & food & 3593\\
+    non-specialized food & food & 142507\\
+    specialist food & food & 8346\\
+    \hline
+    fuel & fuel & 36849\\
+    \hline
+    electrical house appliances & household goods & 6287\\
+    furniture, lighting etc & household goods & 13671\\
+    hardware, paints \& glass & household goods & 11713\\
+    music \& video recordings \& equipments & household goods & 1002\\
+    \hline
+    non-specialized non-food & non-specialized non-food & 34180\\
+    \hline
+    mail order & non-store sales & 30738\\
+    other non-store & non-store sales & 2464\\
+    \hline
+    other specialized non-food & other specialized non-food & 34098\\
+    \hline
+    pharmaceutical, medical \& toilet goods & pharmaceutical, medical \& toilet goods & 5603\\
+    \hline
+    clothing & textiles, clothing, footwear \& leather & 40106\\
+    footwear \& leather goods & textiles, clothing, footwear \& leather & 4823\\
+    textiles & textiles, clothing, footwear \& leather & 800\\
+  \end{tabular}
+  \caption{UK Retail sectors, their grouping, and their assigned
+    weights as December 2018}
+  \label{tab:g5h6}
+\end{table}
+
+More specifically, for a group of sectors $\vec Y^i = \{Y^i_n\}$,
+$i = 1,2,\dots,K$, we adopt the following model:
+\begin{eqnarray}
+  \mtx Y = (\vec Y^1, \vec Y^2, \dots, \vec Y^K)
+  &=& (\vec F^1, \vec F^2, \dots, \vec F^K) \mtx C' \label{eq:vtr3h}
+\end{eqnarray}
+where $\mtx C'$ denotes the transpose of matrix
+$\mtx C = (\vec C^1, \dots, \vec C^K)$, whose columns are the eigen
+vectors of $K\times K$ positive definite matrix $\cov(\mtx Y)$, i.e.
+\[
+  \cov(\mtx Y) \mtx C =  \mtx C
+  \begin{pmatrix}
+    \lambda_1 & 0 & \cdots & 0 \\
+    0 & \lambda_2 & \cdots & 0 \\
+    \vdots & \vdots & \ddots & \vdots \\
+    0 & 0 & \cdots & \lambda_K
+  \end{pmatrix}
+\]
+where $\lambda_1, \dots, \lambda_K > 0$ are the eigenvalues of the
+covariance matrix $\cov(\mtx Y)$. $\vec F^k$ in\eqref{eq:vtr3h} are
+the factors resulting from PCA, namely $\vec F^k = \mtx Y \vec C^k$.
+The eigenvectors $\{\vec C^k\}$, $k=1,\dots, K$ are normalized such
+that $\inn{\vec C^i, \vec C^j} = \1{i = j}$. Here $\inn{\cdot, \cdot}$
+denotes the inner product.
+
+Once we have decomposed the data matrix $\mtx Y$ into $K$ uncorrelated
+factors, we seek to describe each of them with a time series model. We
+choose M such that
+\[
+  {
+    \sum_{i=1}^M \lambda_i
+    \over
+    \sum_{i=1}^K \lambda_i
+  } > 0.99
+\]
+In plain words, we identify the most significant $M$ factors that
+account for at least 99\% of the variation in the data. We build a
+regression + ARIMA model for each of
+$\vec F^1, \vec F^2, \dots, \vec F^M$ and regard
+$\vec F^{M+1}, \cdots, \vec F^{K}$ as constants.
+For $1 \leq i \leq M$, we adopt the following model:
+\begin{equation}
+  \label{eq:erg5h6}
+  \log F^k_n = \sum_{i=1}^L \beta^k_i \log  W^i_n + R^k_n  
+\end{equation}
+where $L=6$ and $W^1_n, W^2_n, W^3_n, W^4_n, W^5_n, W^6_n$ denote
+the weather data in the $n$-th month, namely the minimum temperature,
+mean temperature, maximum temperature, the average amount of rain per
+week, the average number of sunny days per week, and the average
+number of days per week that have more than 1mm of rainfall.
+
+Note that in \eqref{eq:erg5h6} we have taken the logarithm of both the
+retail sales and the weather data before putting them in the framework
+of a linear model. The reason is, as with most economic data, retail
+sales are expected to change in proportion to their present values -
+the larger they are now, the more they are expected to change. This
+exponential behaviour prompts the logarithmic transform. Moreover,
+taking the logarithm of the original data brings them to a much
+narrower range, thereby facilitating model calibration.
+
+Another minor point is, instead of directly using the Celsius
+temperature as reported by the meteorology office, we rather use the
+absolute temperature, i.e. we add 273.15 to the reported temperature
+values before taking the logarithm. By doing so, we don't have to
+worry about negative temperature values that would require
+special treatment when taking the logarithm and when fitting the
+regression coefficients.
+
+$R^k_n$ in \eqref{eq:erg5h6} is the residual of regression and is
+described with an ARIMA model:
+\begin{equation}
+  \label{eq:d345y}
+  (1 - \sum_{i=1}^p \phi_i B^i)
+  (1 - \sum_{i=1}^P \Phi_i B^{i T})
+  (1 - B^T) (1 - B) R^k_n
+  =
+  (1 + \sum_{i=1}^q \theta_i B^i)
+  (1 + \sum_{i=1}^Q \Theta_i B^{i T})
+  \epsilon^k_n
+\end{equation}
+where $B$ is the back-shift operator $B$: $B^L R^k_n = R^k_{n-L}$ for
+all $L=0,1,2,\dots$. $T = 12$ is the length in months of the seasonal
+cycle. $\{\phi_i\}$ and $\{\theta_i\}$ are the auto-regression and
+moving average coefficients, respectively. Similarly, $\{\Phi_i\}$ and
+$\{\Theta_i\}$ are their seasonal counterparts.
+
+$p$ and $q$ are the orders of the auto-regression and moving average
+components of the model. For the retail sales, we have found $p,q \in
+\{0, 1\}$. The same is true for the orders of the seasonal components,
+namely $P$ and $Q$. The innovation terms $\epsilon^k_n$ are assumed to
+be normally distributed, which will be verified after the model has
+been fitted to data. In the following sections, we describe the
+calibration of model \eqref{eq:erg5h6} and\eqref{eq:d345y} to each and
+very group of sectors of UK retail sales.
+
+\subsection{Forecast of Unadjusted Values}
+\label{sec:unadjusted_forecast}
+Using the method mentioned earlier in the section, we have obtained
+predictions of the unadjusted values of RSI, as shown in figure
+\ref{fig:grth67}.
+\begin{figure}[htb!]
+  \centering
+  \includegraphics[width=\linewidth]{RetailSalesIndex.pdf}
+  \caption{Forecasted and reported values of RSI}
+  \label{fig:grth67}
+\end{figure}
+Since the RSI is a composite index computed as the weighted average of
+19 sector-specific indices, the forecast accuracy of RSI is tied to
+the forecast accuracy of these sub-indices. Table
+\ref{tab:g56y} lists the mean and the standard deviation of
+the percentage difference ($\text{forecasted}/\text{reporte} - 1$)
+between the reported and the forecasted, unadjusted values of these
+sub-indices since March 2018.
+\begin{table}[htb!]
+  \centering
+  \begin{tabular}{r|r|c|c}
+    sector & group & average & standard deviation \\
+    \hline
+    books etc. & books etc. & -1.9\% &  7.3\%\\
+    computer telcomm & computer telcomm & 4.3\% &  12.9\%\\
+    floor cover & floor cover & 1.9\% &  10.1\%\\
+    drinks tobacco & food & -1.3\% &  8.2\%\\
+    non-specialized food & food & 0.2\% &  2.4\%\\
+    specialist food & food & -2.8\% &  4.8\%\\
+    fuel & fuel & -0.1\% &  3.6\%\\
+    electrical & household goods & 0.1\% &  8.6\%\\
+    furniture & household goods & 1.8\% &  5.6\%\\
+    hardware & household goods & -1.3\% &  8.9\%\\
+    music & household goods & 2.0\% &  15.1\%\\
+    non-specialized non-food & non-specialized non-food & 2.3\% &  5.8\%\\
+    mail order & non-store & 1.9\% &  8.3\%\\
+    other non-store & non-store & -1.2\% &  11.6\%\\
+    other specialized & other specialized & -0.3\% &  6.0\%\\
+    pharmaceutical etc. & pharmaceutical etc. & -0.4\% &  6.1\%\\
+    clothing & textiles etc. & 0.2\% &  3.3\%\\
+    footwear & textiles etc. & 2.4\% &  7.8\%\\
+    textiles & textiles etc. & 1.9\% &  10.9\%
+  \end{tabular}
+  \caption{Reported and forecasted values of RSI sub-indices}
+  \label{tab:g56y}
+\end{table}
+Clearly the values of these sub-indices vary considerablly more than
+does the overall index, which is indeed one of the reasons for which we have
+chosen to forecast the sub-indices individually before combining them
+in a weighted average to produce a forecast of the composite index. 
+Table \ref{tab:fgt54gg} summarizes our forecast for April, 2019.
+\begin{table}[htb!]
+  \centering
+  \begin{tabular}{r|c|c|c}
+    sector & weight & forecast & last reported \\
+    \hline \hline
+    books etc. & 3723 & 70.9034 & 79.9 \\
+    clothing & 40106 & 96.9751 & 95.3 \\
+    footwear & 4823 & 92.7077 & 78.8 \\
+    textiles & 800 & 81.2297 & 77.7 \\
+    computer telcomm & 5675 & 75.3052 & 66.1 \\
+    drinks tobacco & 3593 & 72.5326 & 77.7 \\
+    non-specialized food & 142507 & 99.1822 & 100.1 \\
+    specialist food & 8346 & 104.199 & 102.8 \\
+    electrical & 6287 & 89.2456 & 98.9 \\
+    furniture & 13671 & 101.94 & 97.1 \\
+    hardware & 11713 & 117.427 & 93.4 \\
+    music & 1002 & 64.5336 & 64.9 \\
+    floor cover & 1520 & 92.8061 & 94.4 \\
+    fuel & 36849 & 109.563 & 109 \\
+    mail order & 30738 & 130.69 & 138.2 \\
+    other non-store & 2464 & 82.2288 & 96.6 \\
+    non-specialized non-food & 34180 & 89.8592 & 86.1 \\
+    other specialized & 34098 & 108.92 & 106.3 \\
+    pharmaceutical etc. & 5603 & 119.236 & 117.8
+  \end{tabular}
+  \caption{Forecast for April 2019}
+  \label{tab:fgt54gg}
+\end{table}
+\subsection{Adjustments}
+\label{sec:adjustments}
+For several reasons, the monthly values of RSI are not immediately
+comparable across months of the same year, or across 12-month
+periods. Firstly, the standard recording periods (SRP) of ONS does not
+coincide with the calendar months. For example, the SRPs of January,
+February, and March 2019 start on 30th December 2018, 27th January and
+24th February, respectively, comprising 4, 4, and 5 weeks.
+
+Secondly, holidays boost retail sales, hence holidays that shift
+between SRPs make the same SRP of different years
+uncomparable. Specifically, the May bank holiday, which falls on the
+last Monday of May, shifts between the May and the June SRPs; the
+August bank holiday, which falls on the last Monday of August, shifts
+between the August and the September SRPs. More remarkably, the Easter
+holiday, which is always on a Sunday, moves between 22nd March and
+25th April, and hence can fall in either the March or the April SRP.
+
+Thirdly, retail sales manifest a strong seasonal pattern. For example,
+sales in November and December are expected to be significantly higher
+than in January or February, owing to the Christmas holidays.
+
+These phenomina are merely results of irregularities of the calendar,
+or are results of known factors e.g. Christmas, and do not reflect the
+real strength of the economy. Thus it is often desirable to adjust
+the original data to account for the numerical effects of these
+phenomina. \S\ref{sec:f455} and \S\ref{sec:j98f4} describe these
+adjustments in more details.
+
+\subsubsection{Calendar adjustment}\label{sec:f455}
+The ONS used the term ``phase shift'' to describe the variation in the
+lengths of SRPs and their misalignment with the calendar months. To
+account for the effect of phase shift, the ONS constructs 12
+time series, each corresponding to a particular month (January,
+February, ..., December), and builds a linear regression model using
+these series, among others, as explanatory variables.
+
+The ONS has provided us the first and the last dates of its SRPs since
+January 1986, and a rough description in words of the explanatory
+variables. These descriptions are relatively vague and inconsistent at
+a few points. We describe in the following our efforts to replicate
+ONS's adjustments.
+
+Corresponding to year $i$ and month $j$, ONS first computes $a'_{i, j}$
+as the number of days from the 1st day of the SRP of that month to the
+beginning of that calendar month. For example, $a'_{34, 1} = 2$ because
+the January (month 1) SRP of 2019 (the 34th year since 1986) starts on
+30th December 2018, 2 days before 1st January 2019. Another example is
+$a'_{31, 4} = -2$, because the SRP of April 2016 (31st year since 1986)
+starts on 3rd April, 2 days after 1st April 2016.
+
+After associating an integer with each SRP, ONS defines an average for
+each of the 12 months of a year. For month $k$, this is
+\[
+  \bar a'_{k} = {1 \over 28} \sum_{i=7}^{34} a'_{i, k}.
+\]
+The summation starts with $i=7$ because ONS stipulates that the
+average should be run from 1992 (7th year since 1986) to 2019. The
+explanatory series corresponding to month $k$ (k = 1,2,3,\dots,12) is
+then constructed as
+\begin{equation}
+  \label{eq:hbnn6}
+  a_{n, k} = \left\{
+    \begin{array}{ll}
+      a'_{\ceil{n/12}, k} - \bar a'_{k} & \text{ if } k < 12, n \bmod{12} = k
+      \text{ or } k = 12, n \bmod{12} = 0\\
+      0 & \text{otherwise}
+    \end{array}
+  \right.
+\end{equation}
+where $n=1$ corresponds to January 1986, $n=2$ to February 1986,
+$n=13$ to January 1987, and so on. $\ceil{x}$ denotes the smallest
+integer larger than or equal to $x$.
+
+To adjust for the May and the August bank holiday effects, ONS
+introduces a time series for each of the two bank holidays. For the
+May bank holiday, it first defines
+\[
+  b'_{n, 5} = \left\{
+    \begin{array}{ll}
+      1 & \text{ if } n \bmod{12} = 5 \text{ and the May bank holiday
+          of year } \ceil{n/12} \text{ is in May SRP} \\
+      -0.8 & \text{ if } n \bmod{12} = 6 \text{ and the May bank
+             holiday of year } \ceil{n/12} \text{ is in May SRP}\\
+      0 & \text{otherwise}
+    \end{array}
+    \right.
+\]
+where $n$ has the same meaning and domain as in \eqref{eq:hbnn6}. ONS
+then defines
+\[
+  \bar b'_{5} = {1 \over 28}\sum_{i=7}^{34} b'_{12(i-1) + 5, 5}
+\]
+and
+\[
+  \bar b'_{6} = {1 \over 28}\sum_{i=7}^{34} b'_{12(i-1) + 6, 5}
+\]
+Finally, the explanatory series for the May bank holiday is
+constructed as
+\[
+  b_{n, 5} = \left\{
+      \begin{array}{ll}
+        b'_{n,5} - \bar b'_5 & \text{if } n \bmod{12} = 5 \\
+        b'_{n,5} - \bar b'_6 & \text{if } n \bmod{12} = 6 \\
+        0 & \text{otherwise}
+      \end{array}
+    \right.
+\]
+The explanatory series for the August bank holiday, call it
+$\{b_{n,8}\}$, is constructed similarly with August substituting May
+and September substituting June.
+
+After the phase shift and the bank holiday effects, one needs to
+adjust an RSI series for the Easter holidays. ONS identifies 4
+scenarios of Easter depending on the dates of the Easter Sunday and
+the beginning of the April SRP. Table \ref{tab:fth5} gives their
+definitions:
+\begin{table}[htb!]
+  \centering
+  \begin{tabular}{c|c}
+    No. weeks from beg. April SRP to Easter Sunday & class \\
+    \hline \hline
+    -2 or -1 & I \\
+    \hline
+    0 - April SRP starts on the Easter Sunday & II \\
+    \hline
+    1 & III \\
+    \hline
+    2 or 3 & IV
+  \end{tabular}
+  \caption{Classification of Easter}
+  \label{tab:fth5}
+\end{table}
+
+ONS introduces 3 explanatory series to reflect the Easter effect in
+the scenarios I, II and III in comparison to scario IV. These are
+defined as
+\[
+  e'_{n, i} = \left\{
+    \begin{array}{ll}
+      0.8 & \text{if } n \bmod{12} = 3
+            \text{ and year } \ceil{n/12} \text{ has class i Easter} \\
+      -1 & \text{if } n \bmod{12} = 4
+           \text{ and year } \ceil{n/12} \text{ has class i Easter} \\
+      0 & \text{otherwise}
+    \end{array}
+  \right.
+\]
+where $i \in \{1, 2, 3\}$. Then the monthly means of these series
+are defined as
+\[
+  \bar e'_{3, i} = {1 \over 34} \sum_{j=1}^{34} e'_{12(j-1)+3, i}
+  \quad
+  \bar e'_{4, i} = {1 \over 34} \sum_{j=1}^{34} e'_{12(j-1)+4, i}  
+\]
+Note that the summation runs from 1986 (1st year), instead of 1992
+(7th year), to 2019. It is specified as such by ONS. The eventual
+explanatory series for Easter are then defined as the de-meaned
+versions of $\{e'_{n,i}\}$:
+\[
+  e_{n, i} = \left\{
+      \begin{array}{ll}
+        e'_{n, i} - \bar e'_{3,i} & \text{if } n \bmod{12} = 3 \\
+        e'_{n, i} - \bar e'_{4,i} & \text{if } n \bmod{12} = 4 \\
+        0 & \text{otherwise}
+      \end{array}
+    \right.
+\]
+
+Now that explanatory series have been constructed to account for the
+calendar effects of phase shift, May and August bank holidays, as well
+as the Easter, a linear regression model is fitted to the
+log-transformed series, call it $\{\log Y_n\}$, so that a new
+series without calendar effects can be extracted as the residuals of
+the model:
+\begin{equation}
+  \label{eq:vftb5}
+  \log Y_n = \sum_{i \in \{1,2,10,11,12\}} \beta_i a_{n, i} +
+  \beta_{13} b_{n, 5} + \beta_{14} b_{n, 8}
+  + \sum_{i =1}^3 \beta_{14+i} e_{n, i} + X_n
+\end{equation}
+where $\{a_{n,i}\}$ accounts for the phase shift effect of month $i$,
+$\{b_{n,5}\}$ and $\{b_{n,8}\}$ for the May and the August bank
+holidays effects, respectively, and $\{e_{n,i}\}$ for the Easter effect of
+class $i$. $\{\beta_i\}_{i=1,2,\dots,17}$ are the regression
+coefficients to be fitted.  $\{X_n\}$ are the residuals of the
+regression model and the subject of seasonal adjustment, which is
+covered in \S\ref{sec:j98f4}.
+
+\subsubsection{Seasonal adjustment}\label{sec:j98f4}
+Having extracted the residual series $\{X_n\}$ from the linear regression
+model \eqref{eq:vftb5}, the next step is to adjust $\{X_n\}$ for seasonal
+variation, and substitute its appearance in \eqref{eq:vftb5} with its
+seasonally adjusted counterpart. The underlying assumption here is that
+$X$  can be decomposed into an additive combination of a seasonal
+component, a trend and cyclical component, and an irregular
+component. The seasonally adjusted series should contain only the last
+two components.
+
+Apparently, the key to seasonal adjustment is the identification of
+the seasonal and the trend \& cyclical components. As far as we know,
+there are two approaches to this problem. The first is based on ARIMA
+models, and decomposes $X_n$ as
+\begin{equation}
+  \label{eq:vfrthg65}
+  X_n = S_n + N_n  
+\end{equation}
+where $S_n$ is the seasonal component, and $N_n$ is the non-seasonal
+component - the sum of the aforementioned irregular component and the
+trend cyclical component. This approach, promoted by Bell and Hillmer,
+provides a formal definition of $S_n$ and $N_n$: Suppose $X_n$ is
+described by an ARIMA model
+\begin{equation}
+  \label{eq:vtr65}
+  \phi^* (B) X_n = \theta^* (B) \epsilon_n.  
+\end{equation}
+where $B$ is the back-shift operator, $\{\epsilon_n\}$ are the
+independent variables, and $\phi^*(\cdot), \theta^*(\cdot)$ are
+polynomials. By a result of Hillmer and Tiao, if a decomposition of
+the form \eqref{eq:vfrthg65} exists and satisfies the following
+conditions, then the decomposition is unique:
+\begin{itemize}
+\item The components $S_n$ and $N_n$ are each described by an ARIMA model:
+  \begin{eqnarray*}
+    \phi_S(B) S_n &=& \theta_S(B) b_n \\
+    \phi_N(B) N_n &=& \theta_N(B) c_n
+  \end{eqnarray*}
+\item $\phi_S(B)$ can be written as
+  \begin{equation}
+    \label{eq:gvgth5}
+    \phi_S(B) = 1 + B + \dots + B^{11}  
+  \end{equation}
+\item the order of $\theta_S(\cdot)$ is less than 12
+\item $\var(b_n)$ is the smallest possible, satisfying the above conditions.
+\end{itemize}
+Hillermer and Tiao show that \eqref{eq:gvgth5} yields a spectral
+density that has infinite peaks at the seasonal frequencies and that 
+the expected value of a sum of $S_n$ over any 12 consecutive months is
+0. These are indeed the desired properties of a seasonal component.
+
+An alternative, non-parametric approach to seasonal adjustment is to
+use moving averages. This approach, called the X-11ARIMA method, has a
+longer history and, to our understanding, is also the one adopted by
+ONS. X-11 ARIMA builds on the well-established X-11 algorithm by first
+fitting an ARIMA model to the observed series and then extending it
+using the forecasted values from the model. This allows the symmetric
+moving averages of the X-11 algorithm to be applied in full, making
+big revisions less likely.
+
+Since the algorithm configurations used by ONS for seasonal adjustment is
+not clear from the agency's documentation, we exhaust the
+configuration space and try to match the reported adjusted values
+with their unadjusted counterparts in the same report, i.e. we
+find index $\kappa$ as
+\begin{equation}
+  \label{eq:gt554}
+  \kappa = \argmin_{k} {1 \over n} \sum_{i=1}^n |s_{k, i} - r_i|.
+\end{equation}
+where $s_{k, i}$ denotes the adjusted value of month $i$ computed
+using parameter set $k$, and $r_i$ denotes the reported adjusted value
+of the same month. This way, we have managed to identify a set of
+best-matching parameter values for the X11-ARIMA algorithm, as is
+summarized in table \ref{tab:vt5h54}:
+\begin{table}[htb!]
+  \centering
+  \begin{tabular}{r|l}
+    Parameter & value \\
+    \hline
+    Seasonal MA algorithm & Henderson s3x9 \\
+    Trend MA algorithm & X11 trend MA algorithm with span 9 \\
+    look-back period & 108 months, i.e. 9 years
+  \end{tabular}
+  \caption{X11-ARIMA parameter settings}
+  \label{tab:vt5h54}
+\end{table}
+
+\subsection{Forecast of adjusted values}
+Adjusting the forecasted values as described in
+\S\ref{sec:unadjusted_forecast} for the calendar effects and the
+seasonal variations as mentioned in \S\ref{sec:adjustments} provides
+us with forecast of the adjusted values. In Figure \ref{fig:f45cef54}
+a comparison between the reported and the forecasted values are
+shown. For the 13 months included in the back-testing, the percentage
+difference between a forecasted value and its reported counterpart
+i.e. $\text{forecasted}/\text{reported} - 1$ has mean 0 and standard
+error 2.42\% for the unadjusted and 2.21\% for the adjusted values.
+\begin{figure}[htb!]
+  \centering
+  \includegraphics[width=\linewidth]{f45cef54.pdf}
+  \caption{Forecast accuracy of unadjusted and adjusted values. Top:
+    unadjusted values; bottom: adjusted values.
+  }
+  \label{fig:f45cef54}
+\end{figure}
+
+The focus of the market is very often on the month-on-month percentage
+change of the adjusted values. We have forecasted this number for
+April 2019, which is scheduled to be released on 23rd May. It is
+computed as $x_4/x_3 - 1$, where $x_i$ stands for the value of the
+RSI index for month $i$. For the index that comprises all sectors
+except automotive fuel, our prediction of this value is -0.83\%. Its
+breakdown to percentage changes in contituent sectors are shown in
+table \ref{tab:sector5t5y}.
+\begin{table}[htb!]
+  \centering
+  \begin{tabular}{r|r|r|r|r}
+    sector & group & \% total retail & \% MoM change\\
+    \hline \hline
+    non-specialized food & food & 40.6\% & -1.2\%\\
+    clothing & textiles etc. & 11.4\% & -1.2\%\\
+    non-specialized non-food & non-specialized non-food & 9.7\% & 1.4\%\\
+    other specialized & other specialized & 9.7\% & -2.9\%\\
+    mail order & non-store & 8.8\% & -5.5\%\\
+    furniture & household goods & 3.9\% & 1.7\%\\
+    hardware & household goods & 3.3\% & 6.0\%\\
+    specialist food & food & 2.4\% & -1.4\%\\
+    electrical & household goods & 1.8\% & -8.2\%\\
+    computer telcomm & computer telcomm & 1.6\% & -1.4\%\\
+    pharmaceutical etc. & pharmaceutical etc. & 1.6\% & -0.3\%\\
+    footwear & textiles etc. & 1.4\% & 3.9\%\\
+    books etc. & books etc. & 1.1\% & -2.7\%\\
+    drinks tobacco & food & 1.0\% & -7.2\%\\
+    other non-store & non-store & 0.7\% & -11.7\%\\
+    floor cover & floor cover & 0.4\% & 0.1\%\\
+    music & household goods & 0.3\% & 1.9\%\\
+    textiles & textiles etc. & 0.2\% & 3.0\%\\
+  \end{tabular}
+  \caption{month-on-month percentage changes of sectors of RSI}
+  \label{tab:sector5t5y}
+\end{table}
+A few big numbers to notice are the following:
+\begin{itemize}
+\item Retail sales of food is expected to drop. It is my opinion that
+  non-specialized food stores will see their sales decrease by
+  1.2\%. Because this sector makes up 40.6\% of total retail, the
+  composite RSI will be negatively affected to a large extent.
+  This decrement is mainly due to the extraordinarily sunny weather in
+  April. Retail sales of food is found to be negatively correlated to
+  the number of sunny hours and positively correlated to the amount of
+  rainfall and the number of rainy days in the same month.
+  This phenomenon is quite intuitive - when the sun is shining, people
+  find more reasons to go out than to stay at home and cook their own
+  meals.
+
+  The total sunshine time in April 2019 is 50\% more than the
+  108-month avergage, while the amount of rainfall and the number of
+  rainy days are 44\% and 38\% less, respectively.
+  
+\item The situation for non-store retail is similar to that of
+  food. Mail order, a sub-category of non-store retail, accounts for
+  8.8\% of total UK retail and is forecasted to fall by 5.5\%. Again,
+  its negative correlation to sunshine hours and positive correlation
+  to rainfall are behind the decrement.
+
+\item The clothing sector, which makes up 11.4\% of total retail, is
+  forecasted to fall by 1.2\%. This is a result of the temporal
+  correlations that exist among the sales of different months. It is
+  observed that retail in April is negatively correlated to its
+  counterparts in March of the same year and April of the year
+  before. The same is true for other months too.
+
+  In March 2019, retail of clothing increased by 12\% from February
+  2019 and by 7\% from March 2018. It is reasonable that, after a
+  surge of spending on clothing, people's interest in it should
+  subside, causing the retail sales of the sector to decrease.
+\end{itemize}
+
+When the retail of automotive fuel is taken into account, the outlook
+for UK retail is slightly different. Automotive fuel accounts for
+9.5\% of total retail sales as of March 2019 and is forecasted to
+increase by 1.1\% from March to April. As a result, the RSI value
+including fuel (UKRVINFM index in Bloomberg) is expected to decrease
+by 0.62\% in contrast to 0.83\% when fuel is excluded from the
+calculation.
+
+\subsection{Forecast of Market Impact of RSI}
+Once we have obtained a forecast of the adjusted values of RSI, we can
+feed it into the algorithm developed in \S\ref{sec:retail_sales} and
+assess how the market is going to react upon the release of the data.
+For April 2019, we list our estimates in table \ref{tab:vfr4g54}.
+\begin{table}[htb!]
+  \centering
+  \begin{tabular}{c|c|c|c}
+    Asset & Notes & forecasted impact & standard deviation \\
+    \hline
+    GBPUSD & GBP/USD spot rate & -0.032\% & 0.093\% \\
+    BPSW1 & GBP 1-year interest rate swap & -0.14\% & 0.256\% \\
+    BPSW2 & GBP 2-year interest rate swap & -0.205\% & 0.391\% \\
+    BPSW5 & GBP 5-year interest rate swap & -0.455\% & 0.404\%
+  \end{tabular}
+  \caption{Forecasted market impact of RSI on 24th May, 2019.}
+  \label{tab:vfr4g54}
+\end{table}
+The forecasted impact shown in table \ref{tab:vfr4g54} is the expected
+percentage change of the asset in question as measured from 9:30am
+when the new RSI value is released to 10:00am, 30 minutes later when
+the market has digested the data release. For example, we expect the
+GBP/USD exchange rate to have dropped by 0.032\% at 10:00am
+compared with its value at 9:30am, provided that our forecast for
+UKRVINFM hits the released value exactly.
+
+The standard deviation shown in table \ref{tab:vfr4g54} is to be
+interpreted by seeing the aforementioned percentage change as a
+Gaussian random variable. We have 84\% confidence that the real
+percentage change measured at 10:00am will fall in the interval $(\mu
+- \sigma, \mu + \sigma)$ where $\mu$ is the mean of the Gaussian
+variable and our forecasted value, and $\sigma$ is its standard
+deviation. For the GBP/USD exchange rate, we are 84\% sure that it
+will change $-0.125\%$ to $0.061\%$. Suppose the exchange rate is
+1.3000 at 9:30am, then we are 84\% sure that the rate will be in the
+range $(1.2984, 1.3008)$.
+
+
+
+
+\bibliographystyle{plain}
+\bibliography{../kkasi/thesis/econophysics}
+\end{document}
+
